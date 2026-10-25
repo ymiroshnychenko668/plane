@@ -11,7 +11,8 @@ wired estimates views, retain upstream API-key scoping. Normal user/project
 membership and private-page permissions still apply.
 
 `GET workspaces/{slug}/management-capabilities/` identifies the extension and
-supported features. Clients must check it before using extension-only routes.
+supported features. Version 2 adds `generic_asset_delete` and `work_item_relation_ids`.
+Clients must check capabilities before using extension-only routes.
 Native releases are not present in CE and are not advertised.
 
 ## Routes
