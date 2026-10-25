@@ -38,7 +38,7 @@ urlpatterns = [
     ),
     path(
         "workspaces/<str:slug>/assets/<uuid:asset_id>/",
-        GenericAssetEndpoint.as_view(http_method_names=["get", "patch"]),
+        GenericAssetEndpoint.as_view(http_method_names=["get", "patch", "delete"]),
         name="generic-asset-detail",
     ),
 ]

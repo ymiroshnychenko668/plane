@@ -20,6 +20,7 @@ from rest_framework.test import APIClient
 
 from plane.api.views.management import page_revision
 from plane.db.models import (
+    FileAsset,
     Issue,
     IssueRelation,
     Page,
@@ -500,3 +501,82 @@ def test_relation_discover_then_delete_from_either_end(
     assert api_key_client.delete(delete_url + discovered["relation_id"] + "/").status_code == 204
     assert all(not refs for refs in api_key_client.get(first_url).data.values())
     assert all(not refs for refs in api_key_client.get(second_url).data.values())
+
+
+@pytest.fixture
+def storage_client(monkeypatch):
+    # Keep the real S3Storage constructor so unsupported keyword arguments fail.
+    client = Mock()
+    client.generate_presigned_post.return_value = {"url": "https://storage.test/uploads", "fields": {"key": "test-key"}}
+    client.generate_presigned_url.return_value = "https://storage.test/download"
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test-access")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test-secret")
+    monkeypatch.setenv("AWS_S3_BUCKET_NAME", "test-uploads")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    monkeypatch.setenv("USE_MINIO", "1")
+    monkeypatch.setattr("plane.settings.storage.boto3.client", Mock(return_value=client))
+    return client
+
+
+def test_generic_asset_presign_confirm_download_delete(api_key_client, workspace, project, storage_client):
+    root = f"/api/v1/workspaces/{workspace.slug}/assets/"
+    response = api_key_client.post(
+        root, {"name": "report.txt", "type": "text/plain", "size": 16, "project_id": str(project.id)}, format="json"
+    )
+    assert response.status_code == 200, response.data
+    asset_id = response.data["asset_id"]
+    asset = FileAsset.objects.get(id=asset_id)
+    assert response.data["upload_data"]["url"] == "https://storage.test/uploads"
+    assert storage_client.generate_presigned_post.call_args.kwargs["Key"] == asset.asset.name
+    detail = root + asset_id + "/"
+    assert api_key_client.get(detail).status_code == 400
+    assert api_key_client.patch(detail, {"is_uploaded": True}, format="json").status_code == 204
+    download = api_key_client.get(detail)
+    assert download.status_code == 200, download.data
+    assert download.data["asset_url"] == "https://storage.test/download"
+    assert storage_client.generate_presigned_url.call_args.kwargs["Params"]["Key"] == asset.asset.name
+    assert api_key_client.delete(detail).status_code == 204
+    assert api_key_client.get(detail).status_code == 404
+    deleted = FileAsset.all_objects.get(id=asset_id)
+    assert deleted.is_deleted and deleted.deleted_at is not None
+
+
+def test_generic_asset_delete_respects_project_and_entity_type(api_key_client, workspace, project, create_user):
+    other_project = Project.objects.create(workspace=workspace, name="Private assets", identifier="PVT")
+    asset = FileAsset.objects.create(
+        workspace=workspace,
+        project=other_project,
+        asset="test-asset",
+        entity_type=FileAsset.EntityTypeContext.ISSUE_ATTACHMENT,
+    )
+    root = f"/api/v1/workspaces/{workspace.slug}/assets/"
+    assert api_key_client.delete(root + str(asset.id) + "/").status_code == 403
+    logo = FileAsset.objects.create(
+        workspace=workspace, asset="test-logo", entity_type=FileAsset.EntityTypeContext.WORKSPACE_LOGO
+    )
+    assert api_key_client.delete(root + str(logo.id) + "/").status_code == 404
+    assert FileAsset.objects.filter(id__in=[asset.id, logo.id]).count() == 2
+
+
+def test_user_server_asset_uses_supported_storage_constructor(api_key_client, storage_client):
+    response = api_key_client.post(
+        "/api/v1/assets/user-assets/server/",
+        {"name": "avatar.png", "type": "image/png", "size": 16, "entity_type": "USER_AVATAR"},
+        format="json",
+    )
+    assert response.status_code == 200, response.data
+    assert response.data["upload_data"]["url"] == "https://storage.test/uploads"
+
+
+def test_unscoped_key_workspace_create_rename_read_delete(api_key_client):
+    created = api_key_client.post(
+        "/api/v1/workspaces/", {"name": "Disposable acceptance", "slug": "disposable-acceptance"}, format="json"
+    )
+    assert created.status_code == 201, created.data
+    workspace_id = created.data["id"]
+    detail = "/api/v1/workspaces/disposable-acceptance/"
+    assert api_key_client.patch(detail, {"name": "Renamed acceptance"}, format="json").status_code == 200
+    assert api_key_client.get(detail).data["name"] == "Renamed acceptance"
+    assert api_key_client.delete(detail).status_code == 204
+    assert api_key_client.get(detail).status_code in (403, 404)
+    assert not Workspace.objects.filter(id=workspace_id).exists()

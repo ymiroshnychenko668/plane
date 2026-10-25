@@ -122,3 +122,12 @@ non-local hosts, creates a disposable page, checks propagation into an open
 editor, compares persisted Yjs, tests rename and an unsaved-editor conflict, then
 cleans up. Do not commit fixture credentials. HTML is normalized by Plane's
 existing editor schema; it is not preserved byte-for-byte from the caller.
+
+
+Generic asset creation and download use the same supported storage constructor
+as work-item attachments. Generic assets now support DELETE at
+`workspaces/{slug}/assets/{asset_id}/`; this soft-deletes `ISSUE_ATTACHMENT`
+assets, including uploads not yet bound to a work item. Project-bound assets
+require active project membership. Other asset types retain their dedicated
+lifecycle endpoints. Physical object cleanup remains asynchronous, as in Plane's
+existing attachment deletion workflow.
