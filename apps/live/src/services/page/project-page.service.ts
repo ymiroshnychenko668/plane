@@ -6,11 +6,13 @@
 
 import { AppError } from "@/lib/errors";
 import { PageService } from "./extended.service";
+import { env } from "@/env";
 
 interface ProjectPageServiceParams {
   workspaceSlug: string | null;
   projectId: string | null;
   cookie: string | null;
+  apiKey?: string;
   [key: string]: unknown;
 }
 
@@ -22,10 +24,15 @@ export class ProjectPageService extends PageService {
     const { workspaceSlug, projectId } = params;
     if (!workspaceSlug || !projectId) throw new AppError("Missing required fields.");
     // validate cookie
-    if (!params.cookie) throw new AppError("Cookie is required.");
+    if (!params.cookie && !params.apiKey) throw new AppError("Cookie or backend API key is required.");
     // set cookie
-    this.setHeader("Cookie", params.cookie);
+    if (params.apiKey) {
+      this.setHeader("X-Api-Key", params.apiKey);
+      this.setHeader("live-server-secret-key", env.LIVE_SERVER_SECRET_KEY);
+    } else {
+      this.setHeader("Cookie", params.cookie!);
+    }
     // set base path
-    this.basePath = `/api/workspaces/${workspaceSlug}/projects/${projectId}`;
+    this.basePath = `${params.apiKey ? "/api/v1" : "/api"}/workspaces/${workspaceSlug}/projects/${projectId}`;
   }
 }
