@@ -52,6 +52,15 @@ and `role` (5, 15, or 20). It does not provision user accounts. Duplicate member
 creation returns 409 and the existing membership ID. Existing app restrictions,
 including bot-account membership editing restrictions, are preserved.
 
+## Work-item relation identifiers
+
+Create responses retain `id` as the related work-item UUID and additionally
+return `relation_id` as the relationship row UUID. Grouped list responses retain
+`project_id` and `issue_id`, and additionally return the same `relation_id` in
+each reference. Pass `relation_id` to the relation DELETE endpoint; either end
+of the relation may be used as the work item in the URL. This also works for
+reverse and cross-project relations without guessing an internal database ID.
+
 ## Page content and concurrency
 
 Create a page with `{"name":"Build status","description_html":"<p>Ready</p>"}`.
@@ -104,7 +113,7 @@ alone do not establish that a deployment is ready.
 For a running isolated local stack, the opt-in WebSocket acceptance script is:
 
 ```sh
-node apps/live/tests/scripts/content-stack-smoke.mjs /path/to/management-fixture.json
+node apps/live/tests/integration/content-stack-smoke.mjs /path/to/management-fixture.json
 ```
 
 The ignored fixture must contain `base_url`, `workspace_slug`, `project_id`,

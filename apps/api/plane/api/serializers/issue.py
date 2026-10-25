@@ -485,14 +485,15 @@ class IssueRelationRefSerializer(serializers.Serializer):
 
     project_id = serializers.UUIDField(help_text="Project containing the related work item")
     issue_id = serializers.UUIDField(help_text="ID of the related work item")
+    relation_id = serializers.UUIDField(help_text="Relationship row ID used to delete this relation")
 
 
 class IssueRelationResponseSerializer(serializers.Serializer):
     """
     Serializer for issue relations response showing grouped relation types.
 
-    Each list contains project_id and issue_id pairs so clients can resolve
-    cross-project relations.
+    Each list contains project_id, issue_id, and relation_id so clients can
+    resolve cross-project relations and delete a discovered relationship.
     """
 
     blocking = serializers.ListField(
@@ -588,6 +589,7 @@ class IssueRelationSerializer(BaseSerializer):
     project context, sequence ID, and relationship type.
     """
 
+    relation_id = serializers.UUIDField(source="id", read_only=True)
     id = serializers.UUIDField(source="related_issue.id", read_only=True)
     project_id = serializers.UUIDField(source="related_issue.project_id", read_only=True)
     sequence_id = serializers.IntegerField(source="related_issue.sequence_id", read_only=True)
@@ -600,6 +602,7 @@ class IssueRelationSerializer(BaseSerializer):
         model = IssueRelation
         fields = [
             "id",
+            "relation_id",
             "project_id",
             "sequence_id",
             "relation_type",
@@ -629,6 +632,7 @@ class RelatedIssueSerializer(BaseSerializer):
     including project context, sequence ID, and relationship type.
     """
 
+    relation_id = serializers.UUIDField(source="id", read_only=True)
     id = serializers.UUIDField(source="issue.id", read_only=True)
     project_id = serializers.PrimaryKeyRelatedField(source="issue.project_id", read_only=True)
     sequence_id = serializers.IntegerField(source="issue.sequence_id", read_only=True)
@@ -643,6 +647,7 @@ class RelatedIssueSerializer(BaseSerializer):
         model = IssueRelation
         fields = [
             "id",
+            "relation_id",
             "project_id",
             "sequence_id",
             "relation_type",

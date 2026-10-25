@@ -2377,6 +2377,7 @@ class IssueRelationListCreateAPIEndpoint(BaseAPIView):
             Q(issue_id=issue_id) | Q(related_issue_id=issue_id),
             workspace__slug=slug,
         ).values(
+            "id",
             "relation_type",
             "issue_id",
             "related_issue_id",
@@ -2402,51 +2403,91 @@ class IssueRelationListCreateAPIEndpoint(BaseAPIView):
             if rt == "blocked_by":
                 if str(rel["related_issue_id"]) == str(issue_id):
                     response_data["blocking"].append(
-                        {"project_id": str(rel["issue_project_id"]), "issue_id": str(rel["issue_id"])}
+                        {
+                            "project_id": str(rel["issue_project_id"]),
+                            "issue_id": str(rel["issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
                 if str(rel["issue_id"]) == str(issue_id):
                     response_data["blocked_by"].append(
-                        {"project_id": str(rel["related_issue_project_id"]), "issue_id": str(rel["related_issue_id"])}
+                        {
+                            "project_id": str(rel["related_issue_project_id"]),
+                            "issue_id": str(rel["related_issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
             elif rt == "duplicate":
                 if str(rel["issue_id"]) == str(issue_id) and rel["related_issue_id"] not in seen_duplicate:
                     seen_duplicate.add(rel["related_issue_id"])
                     response_data["duplicate"].append(
-                        {"project_id": str(rel["related_issue_project_id"]), "issue_id": str(rel["related_issue_id"])}
+                        {
+                            "project_id": str(rel["related_issue_project_id"]),
+                            "issue_id": str(rel["related_issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
                 if str(rel["related_issue_id"]) == str(issue_id) and rel["issue_id"] not in seen_duplicate:
                     seen_duplicate.add(rel["issue_id"])
                     response_data["duplicate"].append(
-                        {"project_id": str(rel["issue_project_id"]), "issue_id": str(rel["issue_id"])}
+                        {
+                            "project_id": str(rel["issue_project_id"]),
+                            "issue_id": str(rel["issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
             elif rt == "relates_to":
                 if str(rel["issue_id"]) == str(issue_id) and rel["related_issue_id"] not in seen_relates_to:
                     seen_relates_to.add(rel["related_issue_id"])
                     response_data["relates_to"].append(
-                        {"project_id": str(rel["related_issue_project_id"]), "issue_id": str(rel["related_issue_id"])}
+                        {
+                            "project_id": str(rel["related_issue_project_id"]),
+                            "issue_id": str(rel["related_issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
                 if str(rel["related_issue_id"]) == str(issue_id) and rel["issue_id"] not in seen_relates_to:
                     seen_relates_to.add(rel["issue_id"])
                     response_data["relates_to"].append(
-                        {"project_id": str(rel["issue_project_id"]), "issue_id": str(rel["issue_id"])}
+                        {
+                            "project_id": str(rel["issue_project_id"]),
+                            "issue_id": str(rel["issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
             elif rt == "start_before":
                 if str(rel["related_issue_id"]) == str(issue_id):
                     response_data["start_after"].append(
-                        {"project_id": str(rel["issue_project_id"]), "issue_id": str(rel["issue_id"])}
+                        {
+                            "project_id": str(rel["issue_project_id"]),
+                            "issue_id": str(rel["issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
                 if str(rel["issue_id"]) == str(issue_id):
                     response_data["start_before"].append(
-                        {"project_id": str(rel["related_issue_project_id"]), "issue_id": str(rel["related_issue_id"])}
+                        {
+                            "project_id": str(rel["related_issue_project_id"]),
+                            "issue_id": str(rel["related_issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
             elif rt == "finish_before":
                 if str(rel["related_issue_id"]) == str(issue_id):
                     response_data["finish_after"].append(
-                        {"project_id": str(rel["issue_project_id"]), "issue_id": str(rel["issue_id"])}
+                        {
+                            "project_id": str(rel["issue_project_id"]),
+                            "issue_id": str(rel["issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
                 if str(rel["issue_id"]) == str(issue_id):
                     response_data["finish_before"].append(
-                        {"project_id": str(rel["related_issue_project_id"]), "issue_id": str(rel["related_issue_id"])}
+                        {
+                            "project_id": str(rel["related_issue_project_id"]),
+                            "issue_id": str(rel["related_issue_id"]),
+                            "relation_id": str(rel["id"]),
+                        }
                     )
 
         return Response(response_data, status=status.HTTP_200_OK)

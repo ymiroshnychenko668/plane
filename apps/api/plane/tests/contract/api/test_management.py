@@ -446,3 +446,57 @@ def test_compressed_response_revision_can_be_reused(api_key_client, workspace, p
     assert response["ETag"].startswith('W/"')
     updated = api_key_client.patch(url, {"color": "blue"}, format="json", HTTP_IF_MATCH=response["ETag"])
     assert updated.status_code == 200, updated.data
+
+
+@pytest.mark.parametrize(
+    "relation_type,reverse_type",
+    [
+        ("blocking", "blocked_by"),
+        ("blocked_by", "blocking"),
+        ("duplicate", "duplicate"),
+        ("relates_to", "relates_to"),
+        ("start_before", "start_after"),
+        ("start_after", "start_before"),
+        ("finish_before", "finish_after"),
+        ("finish_after", "finish_before"),
+    ],
+)
+def test_relation_discover_then_delete_from_either_end(
+    api_key_client, workspace, project, create_user, relation_type, reverse_type
+):
+    state = State.objects.create(workspace=workspace, project=project, name="Open", group="started")
+    first = Issue.objects.create(workspace=workspace, project=project, state=state, name="First relation endpoint")
+    other_project = Project.objects.create(workspace=workspace, name="Related project", identifier="REL")
+    ProjectMember.objects.create(workspace=workspace, project=other_project, member=create_user, role=20)
+    other_state = State.objects.create(workspace=workspace, project=other_project, name="Open", group="started")
+    second = Issue.objects.create(
+        workspace=workspace, project=other_project, state=other_state, name="Second relation endpoint"
+    )
+    first_url = project_url(workspace, project) + f"work-items/{first.id}/relations/"
+    second_url = project_url(workspace, other_project) + f"work-items/{second.id}/relations/"
+    created = api_key_client.post(
+        first_url, {"relation_type": relation_type, "issues": [str(second.id)]}, format="json"
+    )
+    assert created.status_code == 201, created.data
+    assert len(created.data) == 1
+    relation_id = str(created.data[0]["relation_id"])
+    assert str(created.data[0]["id"]) == str(second.id)
+    assert str(created.data[0]["project_id"]) == str(other_project.id)
+    assert relation_id != str(second.id)
+    expected_first = {"project_id": str(other_project.id), "issue_id": str(second.id), "relation_id": relation_id}
+    expected_second = {"project_id": str(project.id), "issue_id": str(first.id), "relation_id": relation_id}
+    first_list = api_key_client.get(first_url)
+    second_list = api_key_client.get(second_url)
+    assert first_list.status_code == second_list.status_code == 200
+    assert first_list.data[relation_type] == [expected_first]
+    assert second_list.data[reverse_type] == [expected_second]
+    # Exercise both endpoint orientations using the ID obtained exclusively via API.
+    discovered = (
+        second_list.data[reverse_type][0]
+        if relation_type in ("blocking", "start_after", "finish_after")
+        else first_list.data[relation_type][0]
+    )
+    delete_url = second_url if relation_type in ("blocking", "start_after", "finish_after") else first_url
+    assert api_key_client.delete(delete_url + discovered["relation_id"] + "/").status_code == 204
+    assert all(not refs for refs in api_key_client.get(first_url).data.values())
+    assert all(not refs for refs in api_key_client.get(second_url).data.values())
