@@ -5,6 +5,7 @@
 from django.urls import path
 
 from plane.api.views.agent_registration import ProjectAgentRegistrationAPIEndpoint
+from plane.api.views.project_provisioning import ProjectProvisioningAPIEndpoint
 from plane.api.views.management import (
     ManagementCapabilitiesAPIEndpoint,
     PageContentAPIEndpoint,
@@ -32,6 +33,7 @@ urlpatterns = [
         WorkspaceManagementViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
     ),
     path(workspace + "management-capabilities/", ManagementCapabilitiesAPIEndpoint.as_view()),
+    path(workspace + "project-provisioning/<str:project_key>/", ProjectProvisioningAPIEndpoint.as_view()),
     path(workspace + "workspace-members/", WorkspaceMemberManagementViewSet.as_view({"get": "list", "post": "create"})),
     path(
         workspace + "workspace-members/<uuid:pk>/",
