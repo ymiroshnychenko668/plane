@@ -4,6 +4,7 @@
 
 from django.urls import path
 
+from plane.api.views.agent_registration import ProjectAgentRegistrationAPIEndpoint
 from plane.api.views.management import (
     ManagementCapabilitiesAPIEndpoint,
     PageContentAPIEndpoint,
@@ -37,6 +38,11 @@ urlpatterns = [
         WorkspaceMemberManagementViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}),
     ),
     path(project + "pages/", PageManagementViewSet.as_view({"get": "list", "post": "create"})),
+    path(project + "agent-registrations/", ProjectAgentRegistrationAPIEndpoint.as_view()),
+    path(
+        project + "agent-registrations/<str:runtime>/<str:agent_key>/",
+        ProjectAgentRegistrationAPIEndpoint.as_view(),
+    ),
     path(project + "pages-summary/", PageManagementViewSet.as_view({"get": "summary"})),
     path(page, PageManagementViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"})),
     path(page + "archive/", PageManagementViewSet.as_view({"post": "archive", "delete": "unarchive"})),

@@ -99,8 +99,10 @@ def test_capabilities_and_workspace_discovery(api_key_client, workspace, create_
     assert [item["slug"] for item in data] == [workspace.slug]
     response = api_key_client.get(f"/api/v1/workspaces/{workspace.slug}/management-capabilities/")
     assert response.status_code == 200
-    assert response.data["version"] == 2
-    assert {"pages", "work_item_relation_ids", "generic_asset_delete"}.issubset(response.data["capabilities"])
+    assert response.data["version"] == 3
+    assert {"pages", "work_item_relation_ids", "generic_asset_delete", "agent_registrations"}.issubset(
+        response.data["capabilities"]
+    )
     assert response.data["native_releases"] is False
     assert api_key_client.get("/api/v1/workspaces/other-workspace/management-capabilities/").status_code == 403
 

@@ -490,7 +490,7 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
         return Response(
             {
                 "extension": "plane-ce-management",
-                "version": 2,
+                "version": 3,
                 "base_plane_version": "1.4.2",
                 "capabilities": [
                     "workspaces",
@@ -503,6 +503,7 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "work_item_relation_delete",
                     "work_item_relation_ids",
                     "generic_asset_delete",
+                    "agent_registrations",
                 ],
                 "page_content": {
                     "input": "description_html",
