@@ -62,7 +62,8 @@ export class Server {
     // Logging middleware
     this.app.use(loggerMiddleware);
     // Body parsing middleware
-    this.app.use(express.json());
+    // Backend content updates include HTML plus the existing base64 Yjs state.
+    this.app.use(express.json({ limit: "20mb" }));
     this.app.use(express.urlencoded({ extended: true }));
     // cors middleware
     this.setupCors();

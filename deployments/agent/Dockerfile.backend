@@ -1,0 +1,9 @@
+# Dependencies and entrypoints are unchanged from CE v1.4.2. Reuse the exact
+# deployed base and replace the complete Python application with fork source.
+ARG BACKEND_BASE=docker.io/makeplane/plane-backend:v1.4.2@sha256:01a159fa9947ec6cd553d360fcfdac63743f2b1503e631ca7e3e5deeb7346cae
+FROM ${BACKEND_BASE}
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.source="https://github.com/ymiroshnychenko668/plane" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      org.opencontainers.image.version="1.4.2-agent"
+COPY apps/api/plane/ /code/plane/

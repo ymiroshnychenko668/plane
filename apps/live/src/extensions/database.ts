@@ -5,6 +5,8 @@
  */
 
 import { Database as HocuspocusDatabase } from "@hocuspocus/extension-database";
+import * as Y from "yjs";
+import { withDocumentLock } from "@/lib/document-lock";
 // plane imports
 import {
   getAllDocumentFormatsFromDocumentEditorBinaryData,
@@ -37,6 +39,8 @@ const fetchDocument = async ({ context, documentName: pageId, instance }: FetchP
         pageDetails.name
       );
       if (convertedBinaryData) {
+        // A backend API replacement persists only after its revision check.
+        if (context.apiKey) return convertedBinaryData;
         // save the converted binary data back to the database
         try {
           const { contentBinaryEncoded, contentHTML, contentJSON } = getAllDocumentFormatsFromDocumentEditorBinaryData(
@@ -69,7 +73,7 @@ const fetchDocument = async ({ context, documentName: pageId, instance }: FetchP
   }
 };
 
-const storeDocument = async ({
+const storeDocumentUnlocked = async ({
   context,
   state: pageBinaryData,
   documentName: pageId,
@@ -132,6 +136,15 @@ const storeDocument = async ({
     throw appError;
   }
 };
+
+const storeDocument = async (payload: StorePayloadWithContext) =>
+  withDocumentLock(payload.documentName, () =>
+    storeDocumentUnlocked({
+      ...payload,
+      // A queued save may contain an old snapshot. Encode after taking the lock.
+      state: Buffer.from(Y.encodeStateAsUpdate(payload.document)),
+    })
+  );
 
 export class Database extends HocuspocusDatabase {
   constructor() {

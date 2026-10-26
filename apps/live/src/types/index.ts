@@ -29,6 +29,8 @@ export type TDocumentTypes = "project_page";
 export type HocusPocusServerContext = {
   projectId: string | null;
   cookie: string;
+  /** Only set by the authenticated backend content controller, never a browser. */
+  apiKey?: string;
   documentType: TDocumentTypes;
   workspaceSlug: string | null;
   userId: string;

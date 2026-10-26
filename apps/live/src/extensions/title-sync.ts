@@ -18,6 +18,7 @@ import {
 } from "@plane/editor";
 import { logger } from "@plane/logger";
 import { AppError } from "@/lib/errors";
+import { PERSISTED_API_CONTENT } from "@/lib/document-content";
 // helpers
 import { getPageService } from "@/services/page/handler";
 import type { HocusPocusServerContext, OnLoadDocumentPayloadWithContext } from "@/types";
@@ -29,7 +30,7 @@ import { TitleUpdateManager } from "./title-update/title-update-manager";
  */
 export class TitleSyncExtension implements Extension {
   // Maps document names to their observers and update managers
-  private titleObservers: Map<string, (events: Y.YEvent<any>[]) => void> = new Map();
+  private titleObservers: Map<string, (events: Y.YEvent<any>[], transaction: Y.Transaction) => void> = new Map();
   private titleUpdateManagers: Map<string, TitleUpdateManager> = new Map();
   // Store minimal data needed for each document's title observer (prevents closure memory leaks)
   private titleObserverData: Map<
@@ -104,7 +105,11 @@ export class TitleSyncExtension implements Extension {
    * Handle title changes for a document
    * This is a separate method to avoid closure memory leaks
    */
-  private handleTitleChange(documentName: string, events: Y.YEvent<any>[]) {
+  private handleTitleChange(documentName: string, events: Y.YEvent<any>[], transaction: Y.Transaction) {
+    if (transaction.meta.get(PERSISTED_API_CONTENT)) {
+      this.titleUpdateManagers.get(documentName)?.cancel();
+      return;
+    }
     let title = "";
     events.forEach((event) => {
       title = extractTextFromHTML(event.currentTarget.toJSON() as string);

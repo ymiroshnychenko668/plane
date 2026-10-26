@@ -33,15 +33,14 @@ export class DocumentController {
       const { description_html, variant } = validatedData;
 
       // Process document conversion
-      const { description_json, description_binary } = convertHTMLDocumentToAllFormats({
+      const converted = convertHTMLDocumentToAllFormats({
         document_html: description_html,
         variant,
       });
 
       // Return successful response
       res.status(200).json({
-        description_json,
-        description_binary,
+        ...converted,
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

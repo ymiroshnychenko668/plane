@@ -40,6 +40,12 @@ export abstract class PageCoreService extends APIService {
 
   async fetchDescriptionBinary(pageId: string): Promise<Buffer> {
     try {
+      if (this.getHeader()["X-Api-Key"]) {
+        const response = await this.get(`${this.basePath}/pages/${pageId}/description/`, {
+          headers: this.getHeader(),
+        });
+        return Buffer.from(response.data.description_binary || "", "base64");
+      }
       const response = await this.get(`${this.basePath}/pages/${pageId}/description/`, {
         headers: {
           ...this.getHeader(),
@@ -115,10 +121,10 @@ export abstract class PageCoreService extends APIService {
     }
   }
 
-  async updateDescriptionBinary(pageId: string, data: TDocumentPayload): Promise<any> {
+  async updateDescriptionBinary(pageId: string, data: TDocumentPayload, expectedRevision?: string): Promise<any> {
     try {
       const response = await this.patch(`${this.basePath}/pages/${pageId}/description/`, data, {
-        headers: this.getHeader(),
+        headers: { ...this.getHeader(), ...(expectedRevision ? { "If-Match": `"${expectedRevision}"` } : {}) },
       });
       return response?.data as unknown;
     } catch (error) {
