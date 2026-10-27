@@ -92,12 +92,16 @@ def check_identity(identity):
         raise ProvisioningConflict("The identity credential is inactive or belongs to another identity.")
 
 
-def ensure_identity(project, identity_key):
+def ensure_identity(project, identity_key, *, setup=None):
     identity, created = ProjectAgentRegistration.objects.get_or_create(
         project=project,
         runtime="codex",
         agent_key=identity_key,
-        defaults={"display_name": f"Codex {identity_key}", "provisioning": {"kind": IDENTITY_KIND}},
+        defaults={
+            "display_name": f"Codex {identity_key}",
+            "provisioning": {"kind": IDENTITY_KIND},
+            "setup": setup if setup is not None else {},
+        },
     )
     if identity.provisioning.get("kind") == CHAT_KIND:
         raise ProvisioningConflict("The selected identity is a chat address slot.")
@@ -228,7 +232,7 @@ class ProjectChatAgentAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
             ).first()
             if expected != (registration.revision if registration else 0):
                 raise RegistrationRevisionConflict()
-            identity = ensure_identity(project, payload["identity_key"])
+            identity = ensure_identity(project, payload["identity_key"], setup=payload.get("setup"))
             created = registration is None
             if created:
                 registration = ProjectAgentRegistration(

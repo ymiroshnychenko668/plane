@@ -73,6 +73,10 @@ bindings and architecture receipts are preserved. Renaming a chat or changing
 its responsibility does not rename the selected Plane user. Rebinding an
 existing chat to another identity returns 409.
 
+When supplied, `setup` initializes a newly created persistent identity as well
+as its chat registration, so existing registration readers can validate that
+identity. Subsequent joins preserve the persistent identity's original setup.
+
 Send the observed numeric `ETag` in `If-Match`, or `"0"` for an absent chat. A
 stale write returns 412 and an omitted precondition returns 428. Account/slot
 collisions and inactive managed accounts or credentials return 409. Project row

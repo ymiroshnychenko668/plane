@@ -215,8 +215,15 @@ def test_explicit_identity_is_shared_and_chat_cannot_switch_identity(api_key_cli
     assert first.status_code == second.status_code == 201
     assert first.data["identity"]["agent_key"] == "build-engineer"
     assert first.data["identity"]["user_id"] == second.data["identity"]["user_id"]
+    assert first.data["identity"]["setup"] == payload["setup"]
+    updated_setup = {**payload["setup"], "bundle_revision": "c" * 40}
+    renamed = put(api_key_client, first_route, {**payload, "setup": updated_setup}, 1)
+    assert renamed.status_code == 200
+    assert renamed.data["agent"]["setup"] == updated_setup
+    assert renamed.data["identity"]["setup"] == first.data["identity"]["setup"]
+    assert renamed.data["identity"]["revision"] == first.data["identity"]["revision"]
     before = counts()
-    switched = put(api_key_client, first_route, {**payload, "identity_key": "other-identity"}, 1)
+    switched = put(api_key_client, first_route, {**payload, "identity_key": "other-identity"}, 2)
     assert switched.status_code == 409 and counts() == before
     assert api_key_client.get(first_route).data["identity"] == first.data["identity"]
     # A later architecture registration may coexist with new identity/chat
@@ -236,6 +243,23 @@ def test_invalid_identity_keys_cannot_allocate_accounts(api_key_client, workspac
     before = counts()
     assert put(api_key_client, url(workspace, project, uuid4()), {**payload, "identity_key": key}).status_code == 400
     assert counts() == before
+
+
+def test_fresh_project_identity_supports_legacy_registry_binding(api_key_client, workspace, project, payload):
+    joined = put(api_key_client, url(workspace, project, uuid4()), payload)
+    assert joined.status_code == 201
+    registry = f"/api/v1/workspaces/{workspace.slug}/projects/{project.id}/agent-registrations/codex/project/"
+    read = api_key_client.get(registry)
+    assert read.status_code == 200
+    assert set(read.data["setup"]) == {"bundle_revision", "skills", "mcp_servers", "verified_at"}
+    assert read.data["setup"] == payload["setup"]
+    desired = {key: read.data[key] for key in ("display_name", "setup", "active")}
+    desired["binding"] = {"binding_id": str(uuid4()), "thread_id": str(uuid4()), "host_id": "local"}
+    rebound = put(api_key_client, registry, desired, read.data["revision"])
+    assert rebound.status_code == 200
+    assert rebound.data["user_id"] == joined.data["identity"]["user_id"]
+    assert rebound.data["setup"] == payload["setup"]
+    assert str(ProjectAgentRegistration.objects.get(id=rebound.data["id"]).api_token.user_id) == rebound.data["user_id"]
 
 
 @pytest.mark.parametrize(
