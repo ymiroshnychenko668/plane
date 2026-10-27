@@ -150,6 +150,15 @@ class RegistrationReadSerializer(serializers.ModelSerializer):
     workspace = serializers.UUIDField(source="project.workspace_id")
     created_at = serializers.DateTimeField(default_timezone=datetime_timezone.utc)
     updated_at = serializers.DateTimeField(default_timezone=datetime_timezone.utc)
+    user_id = serializers.UUIDField(read_only=True, allow_null=True)
+    role = serializers.SerializerMethodField()
+    identity_key = serializers.SerializerMethodField()
+
+    def get_role(self, registration):
+        return registration.provisioning.get("role")
+
+    def get_identity_key(self, registration):
+        return registration.provisioning.get("identity_key")
 
     class Meta:
         model = ProjectAgentRegistration
@@ -166,6 +175,9 @@ class RegistrationReadSerializer(serializers.ModelSerializer):
             "binding",
             "setup",
             "active",
+            "user_id",
+            "role",
+            "identity_key",
         )
 
 
@@ -174,8 +186,8 @@ def validate_slot(runtime, agent_key):
         raise ValidationError({"runtime": "Expected codex or hermes."})
     if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", agent_key):
         raise ValidationError({"agent_key": "Expected a lowercase role key (maximum 64 characters)."})
-    if runtime == "codex" and agent_key != "project":
-        raise ValidationError({"agent_key": "Codex uses the single project slot."})
+    if runtime == "codex" and agent_key.startswith("chat-") and not re.fullmatch(r"chat-[0-9a-f]{32}", agent_key):
+        raise ValidationError({"agent_key": "Expected a canonical chat identity."})
 
 
 def expected_revision(request):
@@ -217,6 +229,8 @@ class ProjectAgentRegistrationAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
         validate_slot(runtime, agent_key)
         expected = expected_revision(request)
+        if runtime == "codex" and agent_key.startswith("chat-"):
+            raise ValidationError({"agent_key": "Use the chat-agents endpoint to provision or update a chat identity."})
         serializer = RegistrationWriteSerializer(data=request.data, context={"runtime": runtime})
         serializer.is_valid(raise_exception=True)
         payload = serializer.validated_data

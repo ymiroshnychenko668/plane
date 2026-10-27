@@ -139,6 +139,11 @@ class APITokenLogMiddleware:
             # This endpoint bootstraps/retrieves an agent credential. Neither a
             # successful response nor a rejected request belongs in API logs.
             provisioning = "/project-provisioning/" in request.path
+            chat_provisioning = "/chat-agents/" in request.path
+            redaction = (
+                "[REDACTED project provisioning]" if provisioning
+                else "[REDACTED chat agent provisioning]" if chat_provisioning else None
+            )
             log_data = {
                 # Tokenize the (high-entropy) API key into a stable, non-reversible
                 # identifier so logs can be correlated to a token without ever
@@ -151,10 +156,10 @@ class APITokenLogMiddleware:
                 "method": request.method,
                 "query_params": request.META.get("QUERY_STRING", ""),
                 "headers": self._redacted_headers(request),
-                "body": "[REDACTED project provisioning]" if provisioning else (
+                "body": redaction if redaction else (
                     self._safe_decode_body(request_body) if request_body else None
                 ),
-                "response_body": "[REDACTED project provisioning]" if provisioning else (
+                "response_body": redaction if redaction else (
                     self._safe_decode_body(response.content) if response.content else None
                 ),
                 "response_code": response.status_code,

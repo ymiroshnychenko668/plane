@@ -110,6 +110,8 @@ class AgentInput(StrictSerializer):
 
     def validate(self, data):
         validate_slot(data["runtime"], data["key"])
+        if data["runtime"] == "codex" and data["key"] != "project":
+            raise ValidationError({"key": "Use chat-agents to join an existing project."})
         return data
 
 
@@ -198,6 +200,8 @@ def project_for_key(workspace, project_key, project_input=None, *, lock=False):
     if project and project_input:
         for registration in project.agent_registrations.all():
             metadata = registration.provisioning
+            if metadata.get("kind") in {"agent-platform-codex-chat", "agent-platform-codex-identity"}:
+                continue
             if metadata and (
                 metadata.get("project_key") != project_key
                 or metadata.get("repository_url") != project_input["repository_url"]
@@ -432,6 +436,8 @@ class ProjectProvisioningAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
             request.query_params.get("agent_key", "project"),
         )
         validate_slot(runtime, agent_key)
+        if runtime == "codex" and agent_key != "project":
+            raise ValidationError({"agent_key": "Use chat-agents to read a chat identity."})
         workspace = get_object_or_404(Workspace, slug=slug)
         project = project_for_key(workspace, project_key)
         if project is None:

@@ -83,6 +83,9 @@ def test_create_get_list_noop_does_not_create_users_or_pages(api_key_client, wor
         "binding",
         "setup",
         "active",
+        "user_id",
+        "role",
+        "identity_key",
     }
     assert data["project"] == str(project.id)
     assert data["workspace"] == str(workspace.id)
@@ -175,7 +178,6 @@ def test_invalid_precondition_rejected(api_key_client, workspace, project, paylo
     [
         ("claude", "project"),
         ("Codex", "project"),
-        ("codex", "rte"),
         ("codex", "PROJECT"),
         ("hermes", "RTE"),
         ("hermes", "x" * 65),

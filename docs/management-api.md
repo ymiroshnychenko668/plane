@@ -29,6 +29,7 @@ Native releases are not present in CE and are not advertised.
 | workspace | `webhook-logs/{id}/` | GET |
 | project | `pages/` | GET, POST |
 | project | `pages-summary/` | GET |
+| project | `chat-agents/{thread_uuid}/` | GET, PUT |
 | project | `pages/{id}/` | GET, PATCH, DELETE |
 | project | `pages/{id}/description/` | GET, PATCH |
 | project | `pages/{id}/archive/` | POST, DELETE |
@@ -52,6 +53,45 @@ Workspace membership creation accepts `member_id` (an existing active user UUID)
 and `role` (5, 15, or 20). It does not provision user accounts. Duplicate membership
 creation returns 409 and the existing membership ID. Existing app restrictions,
 including bot-account membership editing restrictions, are preserved.
+
+## Codex chat membership
+
+The `chat_agents` capability supports joining a chat to an existing project and
+an assignable Plane identity. `PUT chat-agents/{thread_uuid}/` accepts
+`display_name`, `role` (responsibility text), optional `identity_key` (defaults
+to `project`), `host_id`, and the existing registration `setup` receipt. The
+client obtains the calling thread UUID from trusted host metadata. This endpoint
+does not create or adopt a project, generate architecture, or write team pages.
+
+One persistent Plane identity can serve several chats. The identity registration
+uses the selected lowercase `identity_key`; each chat has a separate immutable
+`chat-<UUID hex>` registration and thread binding. The chat rows share the
+identity's managed, non-bot user and credential. When explicitly selecting a
+missing identity, the endpoint provisions that identity in the existing project.
+New memberships have role 15; existing sufficient roles, names, credentials,
+bindings and architecture receipts are preserved. Renaming a chat or changing
+its responsibility does not rename the selected Plane user. Rebinding an
+existing chat to another identity returns 409.
+
+Send the observed numeric `ETag` in `If-Match`, or `"0"` for an absent chat. A
+stale write returns 412 and an omitted precondition returns 428. Account/slot
+collisions and inactive managed accounts or credentials return 409. Project row
+locking and database uniqueness serialize competing registrations. Repeating an
+unchanged registration preserves the account, membership, credential and chat
+revision. Missing memberships can be reconciled without changing identity.
+
+The response contains `agent` (the chat registration, including `identity_key`,
+`user_id`, `role`), `identity` (the selected persistent registration), and
+`membership` (project membership and workspace membership IDs). PUT additionally
+returns `credential.api_key`. Public GET omits credentials; an explicit GET with
+`include_credential=true` recovers them for unknown-write reconciliation. Both
+credential recovery and PUT require an active project admin. Active project
+members can read the public registration. Responses use `Cache-Control:
+no-store`; request/response bodies are redacted in API activity logs.
+
+This endpoint establishes identity and assignability. It does not implement
+Plane-assignment-to-hcom delivery. Plane's existing issue notification dispatch
+remains in place; addressed hcom transport and queue execution are separate.
 
 ## Work-item relation identifiers
 

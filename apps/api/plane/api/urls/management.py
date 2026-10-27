@@ -5,6 +5,7 @@
 from django.urls import path
 
 from plane.api.views.agent_registration import ProjectAgentRegistrationAPIEndpoint
+from plane.api.views.chat_agent import ProjectChatAgentAPIEndpoint
 from plane.api.views.project_provisioning import ProjectProvisioningAPIEndpoint
 from plane.api.views.management import (
     ManagementCapabilitiesAPIEndpoint,
@@ -41,6 +42,7 @@ urlpatterns = [
     ),
     path(project + "pages/", PageManagementViewSet.as_view({"get": "list", "post": "create"})),
     path(project + "agent-registrations/", ProjectAgentRegistrationAPIEndpoint.as_view()),
+    path(project + "chat-agents/<uuid:thread_id>/", ProjectChatAgentAPIEndpoint.as_view()),
     path(
         project + "agent-registrations/<str:runtime>/<str:agent_key>/",
         ProjectAgentRegistrationAPIEndpoint.as_view(),

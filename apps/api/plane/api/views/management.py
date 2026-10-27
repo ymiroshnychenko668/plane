@@ -505,6 +505,7 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "generic_asset_delete",
                     "agent_registrations",
                     "project_provisioning",
+                    "chat_agents",
                 ],
                 "page_content": {
                     "input": "description_html",
