@@ -246,10 +246,10 @@ def prepare_page_content(project, pages):
     return converted
 
 
-def ensure_membership(model, user, **scope):
-    membership, _ = model.objects.get_or_create(member=user, **scope, defaults={"role": 20, "is_active": True})
-    if membership.role != 20 or not membership.is_active:
-        membership.role, membership.is_active = 20, True
+def ensure_membership(model, user, *, role=20, **scope):
+    membership, _ = model.objects.get_or_create(member=user, **scope, defaults={"role": role, "is_active": True})
+    if membership.role != role or not membership.is_active:
+        membership.role, membership.is_active = role, True
         membership.save(update_fields=["role", "is_active", "updated_at"])
     return membership
 
@@ -282,7 +282,9 @@ def ensure_agent(project, agent, payload, project_key):
     elif not registration.user.is_active or not registration.user.is_managed or registration.user.is_bot:
         raise ProvisioningConflict("The registered agent account is inactive or no longer a visible managed account.")
     user = registration.user
-    ensure_membership(WorkspaceMember, user, workspace=project.workspace)
+    # Membership permits project participation; provisioning authority stays
+    # with the control identity, never with an ordinary project agent token.
+    ensure_membership(WorkspaceMember, user, workspace=project.workspace, role=5)
     ensure_membership(ProjectMember, user, project=project)
     if registration.api_token_id is None:
         registration.api_token = APIToken.objects.create(
@@ -359,8 +361,17 @@ def ensure_assets(project, agent_user, payload, converted):
         serializer.save(external_source=SOURCE, external_id=page["key"])
 
 
+class ProvisioningControlPermission(WorkspaceOwnerPermission):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        # Reject legacy agent accounts which still have workspace role 20 too.
+        # Re-provisioning by the real control identity repairs that membership.
+        return not ProjectAgentRegistration.objects.filter(user=request.user).exists()
+
+
 class ProjectProvisioningAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
-    permission_classes = [WorkspaceOwnerPermission]
+    permission_classes = [ProvisioningControlPermission]
     http_method_names = ["get", "put", "head", "options"]
 
     def finalize_response(self, request, response, *args, **kwargs):
