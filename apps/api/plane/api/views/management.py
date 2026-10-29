@@ -506,6 +506,7 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "agent_registrations",
                     "project_provisioning",
                     "chat_agents",
+                    "builds",
                 ],
                 "page_content": {
                     "input": "description_html",

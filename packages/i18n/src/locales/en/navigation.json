@@ -7,6 +7,7 @@
     }
   },
   "sidebar": {
+    "builds": "Builds",
     "stickies": "Stickies",
     "your_work": "Your work",
     "projects": "Projects",

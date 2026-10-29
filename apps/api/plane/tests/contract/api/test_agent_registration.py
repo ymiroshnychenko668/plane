@@ -155,6 +155,25 @@ def test_hermes_role_slots_and_project_identity_are_independent(
     ]
 
 
+def test_hermes_binding_retains_distinct_instance_role_profile_and_runtime_target(
+    api_key_client, workspace, project, payload,
+):
+    binding = {"binding_id": str(uuid4()), "host_id": "fixture-host",
+               "agent_id": "installed:runtime-42", "instance_id": "project-a-release-primary",
+               "role_template": "rte", "profile": "project-a-release"}
+    payload["binding"] = binding
+    route = slot_url(workspace, project, "hermes", "release-primary")
+    response = put(api_key_client, route, payload)
+    assert response.status_code == 201, response.data
+    assert response.data["binding"] == binding
+    assert api_key_client.get(route).data["binding"] == binding
+    codex = deepcopy(payload)
+    codex["binding"]["thread_id"] = str(uuid4())
+    assert put(api_key_client, slot_url(workspace, project), codex).status_code == 400
+    payload["binding"]["role_template"] = "unknown-role"
+    assert put(api_key_client, route, payload, revision=1).status_code == 400
+
+
 def test_precondition_required_and_stale_writes_do_not_mutate(api_key_client, workspace, project, payload):
     url = slot_url(workspace, project)
     assert api_key_client.put(url, payload, format="json").status_code == 428

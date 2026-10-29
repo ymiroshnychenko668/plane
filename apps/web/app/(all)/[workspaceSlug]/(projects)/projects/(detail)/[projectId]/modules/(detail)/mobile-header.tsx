@@ -7,6 +7,7 @@
 import { useCallback, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
+import { Link } from "react-router";
 // plane imports
 import { EIssueFilterType, ISSUE_LAYOUTS, ISSUE_DISPLAY_FILTERS_BY_PAGE } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
@@ -79,6 +80,12 @@ export const ModuleIssuesMobileHeader = observer(function ModuleIssuesMobileHead
         projectDetails={currentProjectDetails}
       />
       <div className="flex justify-evenly border-b border-subtle bg-surface-1 py-2">
+        <Link
+          to={`/${workspaceSlug}/projects/${projectId}/modules/${moduleId}/builds`}
+          className="flex flex-grow justify-center text-13 text-accent-primary"
+        >
+          Builds
+        </Link>
         <CustomMenu
           maxHeight={"md"}
           className="flex flex-grow justify-center text-13 text-secondary"

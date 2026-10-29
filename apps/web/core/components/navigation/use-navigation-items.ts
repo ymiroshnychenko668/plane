@@ -5,6 +5,7 @@
  */
 
 import { useMemo, useCallback } from "react";
+import { PackageCheck } from "lucide-react";
 // plane imports
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { CycleIcon, IntakeIcon, ModuleIcon, PageIcon, ViewsIcon, WorkItemsIcon } from "@plane/propel/icons";
@@ -62,6 +63,16 @@ export const useNavigationItems = ({
         access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
         shouldRender: !!project?.module_view,
         sortOrder: 3,
+      },
+      {
+        i18n_key: "sidebar.builds",
+        key: "builds",
+        name: "Builds",
+        href: `/${workspaceSlug}/projects/${projectId}/builds`,
+        icon: PackageCheck,
+        access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+        shouldRender: true,
+        sortOrder: 3.5,
       },
       {
         i18n_key: "sidebar.views",
