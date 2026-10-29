@@ -91,3 +91,4 @@ from .sticky import Sticky
 
 from .description import Description, DescriptionVersion
 from .agent_registration import ProjectAgentRegistration
+from .build import Build, BuildResult
