@@ -59,6 +59,7 @@ from plane.db.models import (
     WorkspaceMember,
 )
 from plane.utils.host import base_host
+from plane.utils.team import lock_legacy_page_name
 
 from .base import BaseAPIView
 
@@ -215,6 +216,7 @@ class PageManagementViewSet(APIKeyManagementMixin, PageViewSet):
         )
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
+            lock_legacy_page_name(project_id, request.data.get("name"))
             page = serializer.save()
             transaction.on_commit(
                 lambda: page_transaction.delay(
@@ -244,6 +246,7 @@ class PageManagementViewSet(APIKeyManagementMixin, PageViewSet):
             # TitleSync uses this after a browser edit on a document originally
             # loaded by an API connection. Its Yjs title has already changed.
             with transaction.atomic():
+                lock_legacy_page_name(project_id, request.data.get("name"))
                 page = get_object_or_404(Page.objects.select_for_update(), id=page_id, workspace__slug=slug)
                 check_revision(request, page)
                 if page.is_locked or page.archived_at:
@@ -329,6 +332,11 @@ class PageContentAPIEndpoint(APIKeyManagementMixin, PagesDescriptionViewSet):
 
     def retrieve(self, request, slug, project_id, page_id):
         page = get_object_or_404(self.get_queryset(), id=page_id)
+        from plane.utils.team import legacy_projection
+
+        projection = legacy_projection(page, project_id)
+        if projection is not None:
+            return Response(projection, headers={"ETag": f'"{projection["revision"]}"', "Cache-Control": "no-store"})
         return content_response(page)
 
     def partial_update(self, request, slug, project_id, page_id):
@@ -341,6 +349,7 @@ class PageContentAPIEndpoint(APIKeyManagementMixin, PagesDescriptionViewSet):
             if not required.issubset(request.data):
                 raise ValidationError({"detail": "Live persistence requires all document formats."})
             with transaction.atomic():
+                lock_legacy_page_name(project_id, request.data.get("name"))
                 page = get_object_or_404(Page.objects.select_for_update(), id=page_id, workspace__slug=slug)
                 check_revision(request, page)
                 if page.is_locked or page.archived_at:
@@ -506,6 +515,8 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "agent_registrations",
                     "project_provisioning",
                     "chat_agents",
+                    "builds",
+                    "teams",
                 ],
                 "page_content": {
                     "input": "description_html",

@@ -119,7 +119,7 @@ def test_create_repeat_readback_visible_user_and_actor(
     assert project.module_view and project.page_view
     assert State.all_state_objects.filter(project=project).count() == len(DEFAULT_STATES)
     assert agent.is_managed and agent.is_active and not agent.is_bot and not agent.has_usable_password()
-    assert WorkspaceMember.objects.get(workspace=workspace, member=agent).role == 20
+    assert WorkspaceMember.objects.get(workspace=workspace, member=agent).role == 5
     assert ProjectMember.objects.get(project=project, member=agent).role == 20
     assert ProjectMember.objects.get(project=project, member=create_user).role == 20
     assert Page.objects.get(id=data["pages"][0]["id"]).owned_by == agent
@@ -144,6 +144,36 @@ def test_create_repeat_readback_visible_user_and_actor(
     )
     assert created.status_code == 201, created.data
     assert Module.objects.get(id=created.data["id"]).created_by_id == agent.id
+
+
+def test_project_actor_cannot_read_foreign_project_or_retrieve_provisioned_credentials(
+    api_key_client, workspace, payload,
+):
+    payload["agent"] = {"runtime": "hermes", "key": "rte", "display_name": "RTE Project A"}
+    first = provision(api_key_client, workspace, payload, key="project-a").data
+    second_payload = deepcopy(payload)
+    second_payload["project"].update(name="Project B", identifier="PROJECTB",
+                                     repository_url="https://github.com/example/project-b")
+    second = provision(api_key_client, workspace, second_payload, key="project-b").data
+    own_client = APIClient()
+    own_client.credentials(HTTP_X_API_KEY=first["credential"]["api_key"])
+    foreign = f"/api/v1/workspaces/{workspace.slug}/projects/{second['project']['id']}/modules/"
+    assert own_client.get(foreign).status_code == 403
+    assert own_client.post(foreign, {"name": "Forbidden"}, format="json").status_code == 403
+    assert own_client.get(url(workspace, "project-b"), {"runtime": "hermes", "agent_key": "rte"}).status_code == 403
+    assert own_client.put(url(workspace, "project-b"), second_payload, format="json").status_code == 403
+    # A previously deployed legacy account must not retain this endpoint merely
+    # because its old workspace membership has not yet been repaired.
+    agent = User.objects.get(id=first["agent"]["user_id"])
+    membership = WorkspaceMember.objects.get(workspace=workspace, member=agent)
+    membership.role = 20
+    membership.save()
+    assert own_client.get(url(workspace, "project-b"), {"runtime": "hermes", "agent_key": "rte"}).status_code == 403
+    provision(api_key_client, workspace, payload, key="project-a")
+    membership.refresh_from_db()
+    assert membership.role == 5
+    own_project = f"/api/v1/workspaces/{workspace.slug}/projects/{first['project']['id']}/modules/"
+    assert own_client.post(own_project, {"name": "Permitted"}, format="json").status_code == 201
 
 
 def test_digest_defaults_order_setup_and_adoption_id_are_deterministic(payload):

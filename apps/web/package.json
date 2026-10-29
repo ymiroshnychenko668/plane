@@ -5,6 +5,8 @@
   "license": "AGPL-3.0",
   "type": "module",
   "scripts": {
+    "test:builds": "vitest run core/components/builds",
+    "test:teams": "vitest run core/components/teams",
     "dev": "react-router dev --port 3000",
     "build": "react-router build",
     "preview": "react-router build && serve -s build/client -l 3000",
@@ -86,6 +88,7 @@
     "dotenv": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-tsconfig-paths": "catalog:"
+    "vite-tsconfig-paths": "catalog:",
+    "vitest": "catalog:"
   }
 }

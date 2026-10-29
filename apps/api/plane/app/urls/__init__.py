@@ -22,8 +22,12 @@ from .webhook import urlpatterns as webhook_urls
 from .workspace import urlpatterns as workspace_urls
 from .timezone import urlpatterns as timezone_urls
 from .exporter import urlpatterns as exporter_urls
+from .build import urlpatterns as build_urls
+from .team import urlpatterns as team_urls
 
 urlpatterns = [
+    *team_urls,
+    *build_urls,
     *analytic_urls,
     *asset_urls,
     *cycle_urls,

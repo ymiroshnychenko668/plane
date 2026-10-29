@@ -51,6 +51,8 @@ storybook-static/
 .env.test.local
 .env.production.local
 .secrets
+.test-state/
+.pytest_cache/
 tmp/
 temp/
 

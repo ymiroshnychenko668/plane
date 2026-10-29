@@ -75,11 +75,18 @@ class BindingSerializer(StrictSerializer):
     thread_id = IdentifierField(required=False)
     agent_id = IdentifierField(required=False)
     session_id = IdentifierField(required=False)
+    profile = IdentifierField(required=False)
+    instance_id = IdentifierField(required=False)
+    role_template = serializers.ChoiceField(
+        choices=("rte", "project-manager", "devops", "supervisor"), required=False
+    )
 
     def validate(self, data):
         runtime = self.context["runtime"]
         required = "thread_id" if runtime == "codex" else "agent_id"
-        disallowed = {"agent_id", "session_id"} if runtime == "codex" else {"thread_id"}
+        disallowed = {
+            "agent_id", "session_id", "profile", "instance_id", "role_template"
+        } if runtime == "codex" else {"thread_id"}
         if required not in data:
             raise ValidationError({required: "This field is required for this runtime."})
         if disallowed.intersection(data):

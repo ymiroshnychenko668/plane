@@ -8,7 +8,7 @@ from datetime import datetime
 from django.core.serializers.json import DjangoJSONEncoder
 
 # Django imports
-from django.db import connection
+from django.db import connection, transaction
 from django.db.models import (
     Exists,
     OuterRef,
@@ -46,6 +46,7 @@ from plane.db.models import (
     UserRecentVisit,
 )
 from plane.utils.error_codes import ERROR_CODES
+from plane.utils.team import lock_legacy_page_name, locked_legacy_page_mutation
 
 # Local imports
 from ..base import BaseAPIView, BaseViewSet
@@ -73,6 +74,21 @@ def unarchive_archive_page_and_descendants(page_id, archived_at):
 
 
 class PageViewSet(BaseViewSet):
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.method in {"POST", "PATCH", "PUT"} and request.data.get("name") == "hcom team":
+            from plane.db.models import ProjectTeamMigration
+            from plane.utils.team import TeamConflict
+
+            if ProjectTeamMigration.objects.filter(project_id=kwargs.get("project_id")).exists():
+                raise TeamConflict(
+                    "This project's address book is managed in Teams; a second hcom team page cannot be created."
+                )
+        if request.method not in {"GET", "HEAD", "OPTIONS"} and kwargs.get("page_id"):
+            from plane.utils.team import assert_legacy_page_writable
+
+            assert_legacy_page_writable(kwargs["page_id"])
+
     serializer_class = PageSerializer
     model = Page
     permission_classes = [ProjectPagePermission]
@@ -126,7 +142,9 @@ class PageViewSet(BaseViewSet):
             .distinct()
         )
 
+    @transaction.atomic
     def create(self, request, slug, project_id):
+        lock_legacy_page_name(project_id, request.data.get("name"))
         serializer = PageSerializer(
             data=request.data,
             context={
@@ -151,6 +169,7 @@ class PageViewSet(BaseViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @locked_legacy_page_mutation
     def partial_update(self, request, slug, project_id, page_id):
         try:
             page = Page.objects.get(
@@ -243,6 +262,7 @@ class PageViewSet(BaseViewSet):
                 )
             return Response(data, status=status.HTTP_200_OK)
 
+    @locked_legacy_page_mutation
     def lock(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             pk=page_id,
@@ -255,6 +275,7 @@ class PageViewSet(BaseViewSet):
         page.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @locked_legacy_page_mutation
     def unlock(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             pk=page_id,
@@ -268,6 +289,7 @@ class PageViewSet(BaseViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @locked_legacy_page_mutation
     def access(self, request, slug, project_id, page_id):
         access = request.data.get("access", 0)
         page = Page.objects.get(
@@ -305,6 +327,7 @@ class PageViewSet(BaseViewSet):
         pages = PageSerializer(queryset, many=True).data
         return Response(pages, status=status.HTTP_200_OK)
 
+    @locked_legacy_page_mutation
     def archive(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             pk=page_id,
@@ -336,6 +359,7 @@ class PageViewSet(BaseViewSet):
 
         return Response({"archived_at": str(datetime.now())}, status=status.HTTP_200_OK)
 
+    @locked_legacy_page_mutation
     def unarchive(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             pk=page_id,
@@ -365,6 +389,7 @@ class PageViewSet(BaseViewSet):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @locked_legacy_page_mutation
     def destroy(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             pk=page_id,
@@ -498,6 +523,13 @@ class PageFavoriteViewSet(BaseViewSet):
 class PagesDescriptionViewSet(BaseViewSet):
     permission_classes = [ProjectPagePermission]
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.method not in {"GET", "HEAD", "OPTIONS"} and kwargs.get("page_id"):
+            from plane.utils.team import assert_legacy_page_writable
+
+            assert_legacy_page_writable(kwargs["page_id"])
+
     def retrieve(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             Q(owned_by=self.request.user) | Q(access=0),
@@ -518,6 +550,7 @@ class PagesDescriptionViewSet(BaseViewSet):
         response["Content-Disposition"] = 'attachment; filename="page_description.bin"'
         return response
 
+    @locked_legacy_page_mutation
     def partial_update(self, request, slug, project_id, page_id):
         page = Page.objects.get(
             Q(owned_by=self.request.user) | Q(access=0),

@@ -178,6 +178,15 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
           </div>
         </Header.LeftItem>
         <Header.RightItem className="items-center">
+          {moduleId && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push(`/${workspaceSlug}/projects/${projectId}/modules/${moduleId}/builds`)}
+            >
+              Builds
+            </Button>
+          )}
           <div className="hidden gap-2 md:flex">
             <div className="hidden @4xl:flex">
               <LayoutSelection

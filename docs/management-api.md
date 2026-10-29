@@ -15,33 +15,104 @@ supported features. Version 2 adds `generic_asset_delete` and `work_item_relatio
 Clients must check capabilities before using extension-only routes.
 Native releases are not present in CE and are not advertised.
 
+## Build evidence
+
+The `builds` capability adds structured CI run history and per-module test
+measurements. It uses the existing database and project membership permissions;
+active project members can read, and members/admins can publish with their own
+API key. The UI reads equivalent session-authenticated routes under `/api/`.
+These are service views, independent of editable Plane Pages and the live editor.
+
+Under the project prefix, `GET builds/` returns the standard Plane cursor
+envelope, `GET builds/{id}/` returns one complete build with `ETag`,
+`GET builds-summary/` returns every project module and its latest/last measured
+build, and `POST builds/publish/` publishes an observation. The session routes
+support reads only. List/summary filters are `repository`, `ref`, `workflow`,
+`status`, `run_id`, `attempt` and `module_id` (UUID, or `null` for an explicit
+project aggregate). Lists accept `cursor`/`per_page` (default 50, maximum 100).
+Summary queries inspect the complete matching history, independent of pagination.
+
+Publication identifies a build by `repository` (canonical lowercase
+`owner/repository`), string `run_id` and positive integer `attempt`, within its
+project. A new build also requires `workflow`, exact lowercase Git SHA `revision`
+(40 or 64 hex characters), `ref`, HTTP(S) `pipeline_url`, `status` and timezone-aware
+`observed_at`. Status is `unknown`, `queued`, `running` or `completed`.
+Optional fields are nullable `conclusion`, `started_at`, `finished_at`,
+`freshness_hours`, `links: [{title,url}]`, and `results`. `finished_at` and
+`conclusion` are valid only for a completed build. `duration_seconds` is computed
+only when both start and finish are known; parallel job times are never summed.
+No freshness policy is invented when `freshness_hours` is null/absent.
+
+Each result is identified by explicit `module_id` (a module in this project, or
+null for a measured project aggregate) and `suite`. A new result requires
+`test_type` (`unit`, `integration`, `e2e`, `other`) and a nonempty measured `scope`.
+Optional `exclusions` is an array of source paths, `tests` is null or a partial
+object with nonnegative integer `passed`/`failed`/`skipped` counts, and `coverage`
+is an object with any measured `line`/`branch`/`function`/`statement` keys. Every
+metric requires nonnegative integer `covered` and `total`, exact `revision`,
+`tool`, timezone-aware `measured_at` and a traceable artifact URL/evidence path
+`source`. `covered` cannot exceed `total`; `measured_at` cannot be later than
+the observation. The API stores raw measurements and derives `percent` only
+when `total > 0`. Missing metrics remain absent, and absent coverage yields
+`evidence_states: ["not_measured"]`. Each measured metric exposes independent
+`stale`/`revision_mismatch` reasons, or `measured` when neither applies. An old
+measurement remains historical; merely rereading/reobserving it does not reset
+its timestamp. Project coverage is never calculated by averaging modules.
+
+Send `If-Match: "0"` to create or the observed numeric build `version`/`ETag`
+to update (bare numeric client values are also accepted). Missing preconditions
+return 428; stale preconditions return 412, including retries of an already
+applied create. Read and reconcile after unknown outcomes. An identical
+publication with the current version returns 200 without incrementing `version`.
+Partial updates preserve omitted fields, result rows, test counts and metrics;
+`tests: null` explicitly clears test counts. Supplied `links` replaces the link
+list. Workflow/revision/ref and each result's measured scope/type/exclusions are
+fixed within a run attempt, so old evidence cannot be silently attributed to a
+different code scope. Status regressions, changed terminal conclusions, older
+observations and older replacement metric timestamps return 409. A CI rerun uses
+a new `attempt`. Project-row locking and database uniqueness serialize writers.
+
+The summary response is `{modules: [{module_id,name,latest_build,
+last_measured_build}], project: {latest_build,last_measured_build}}`; build values
+are null when no matching evidence exists. Each summary build contains only
+results for that module (or the explicit project aggregate). Latest is ordered
+by run start, falling back to observation time when the start is unknown. Both
+build references retain their repository/ref/revision/suite/source context; an
+older measured build does not supply measurements to a newer unmeasured build.
+
+Apply migration `db.0125_builds` with the matching API image before enabling the
+UI/MCP feature. PostgreSQL contract tests are in
+`plane/tests/contract/api/test_builds.py`; they exercise real ORM, routes,
+permission boundaries and concurrent writers. Preview fixtures are synthetic
+and must not be treated as production evidence.
+
 ## Routes
 
-| Prefix | Suffix | Methods |
-| --- | --- | --- |
-| none | `workspaces/` | GET, POST |
-| workspace | empty | GET, PATCH, DELETE |
-| workspace | `workspace-members/` | GET, POST |
-| workspace | `workspace-members/{membership_id}/` | GET, PATCH, DELETE |
-| workspace | `webhooks/` | GET, POST |
-| workspace | `webhooks/{id}/` | GET, PATCH, DELETE |
-| workspace | `webhooks/{id}/regenerate/` | POST |
-| workspace | `webhook-logs/{id}/` | GET |
-| project | `pages/` | GET, POST |
-| project | `pages-summary/` | GET |
-| project | `chat-agents/{thread_uuid}/` | GET, PUT |
-| project | `pages/{id}/` | GET, PATCH, DELETE |
-| project | `pages/{id}/description/` | GET, PATCH |
-| project | `pages/{id}/archive/` | POST, DELETE |
-| project | `pages/{id}/lock/` | POST, DELETE |
-| project | `pages/{id}/access/` | POST |
-| project | `pages/{id}/duplicate/` | POST |
-| project | `pages/{id}/versions/` | GET |
-| project | `pages/{id}/versions/{version_id}/` | GET |
-| project | `favorite-pages/{id}/` | POST, DELETE |
-| project | `archived-work-items/` | GET |
-| project | `work-items/{id}/archive/` | GET, POST, DELETE |
-| project | `work-items/{id}/relations/{relation_id}/` | DELETE |
+| Prefix    | Suffix                                     | Methods            |
+| --------- | ------------------------------------------ | ------------------ |
+| none      | `workspaces/`                              | GET, POST          |
+| workspace | empty                                      | GET, PATCH, DELETE |
+| workspace | `workspace-members/`                       | GET, POST          |
+| workspace | `workspace-members/{membership_id}/`       | GET, PATCH, DELETE |
+| workspace | `webhooks/`                                | GET, POST          |
+| workspace | `webhooks/{id}/`                           | GET, PATCH, DELETE |
+| workspace | `webhooks/{id}/regenerate/`                | POST               |
+| workspace | `webhook-logs/{id}/`                       | GET                |
+| project   | `pages/`                                   | GET, POST          |
+| project   | `pages-summary/`                           | GET                |
+| project   | `chat-agents/{thread_uuid}/`               | GET, PUT           |
+| project   | `pages/{id}/`                              | GET, PATCH, DELETE |
+| project   | `pages/{id}/description/`                  | GET, PATCH         |
+| project   | `pages/{id}/archive/`                      | POST, DELETE       |
+| project   | `pages/{id}/lock/`                         | POST, DELETE       |
+| project   | `pages/{id}/access/`                       | POST               |
+| project   | `pages/{id}/duplicate/`                    | POST               |
+| project   | `pages/{id}/versions/`                     | GET                |
+| project   | `pages/{id}/versions/{version_id}/`        | GET                |
+| project   | `favorite-pages/{id}/`                     | POST, DELETE       |
+| project   | `archived-work-items/`                     | GET                |
+| project   | `work-items/{id}/archive/`                 | GET, POST, DELETE  |
+| project   | `work-items/{id}/relations/{relation_id}/` | DELETE             |
 
 Workspace prefix: `workspaces/{slug}/`.
 Project prefix: `workspaces/{slug}/projects/{project_id}/`.
@@ -167,7 +238,6 @@ non-local hosts, creates a disposable page, checks propagation into an open
 editor, compares persisted Yjs, tests rename and an unsaved-editor conflict, then
 cleans up. Do not commit fixture credentials. HTML is normalized by Plane's
 existing editor schema; it is not preserved byte-for-byte from the caller.
-
 
 Generic asset creation and download use the same supported storage constructor
 as work-item attachments. Generic assets now support DELETE at
