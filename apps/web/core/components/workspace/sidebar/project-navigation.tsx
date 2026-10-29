@@ -168,7 +168,9 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
     };
 
     // sort navigation items by sortOrder
-    const sortedNavigationItems = navigationItems(workspaceSlug, projectId).toSorted(
+    // This array is newly allocated; the current Web TypeScript target predates Array.toSorted.
+    // eslint-disable-next-line unicorn/no-array-sort
+    const sortedNavigationItems = navigationItems(workspaceSlug, projectId).sort(
       (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
     );
 
