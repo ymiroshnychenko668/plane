@@ -11,7 +11,7 @@ API-key routes use `/api/v1/` instead. Both use the same service and SQL records
 Management discovery advertises `teams`.
 
 | Method and suffix                 | Contract                                                                                                                                              |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ---- |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /`                           | `project`, `members`, `actors`, `contacts`, `legacy`, `can_manage_members`; optional `search` matches names, roles, runtime, agent keys and addresses |
 | `GET contacts/{address}/`         | Contact plus numeric revision ETag                                                                                                                    |
 | `PUT contacts/{address}/`         | `{registration_id, target, active?}`; `If-Match: "0"` creates an absent address; current ETag updates                                                 |
@@ -19,7 +19,7 @@ Management discovery advertises `teams`.
 | `POST resolve/`                   | `{address}`; exact matching available contact, otherwise 404; an optional leading `@` is accepted                                                     |
 | `POST agents/`                    | Admin adds a registration for an existing active project member: `{runtime, agent_key, display_name, role, user_id, binding}` and `If-Match: "0"`     |
 | `PATCH agents/{registration_id}/` | Current ETag and partial `{display_name?, role?, active?}`                                                                                            |
-| `POST members/{user_id}/`         | Admin adds/reactivates an existing workspace member with `{role: 5                                                                                    | 15  | 20}` |
+| `POST members/{user_id}/`         | Admin adds/reactivates an existing workspace member with `{role}` with numeric value `5`, `15`, or `20`                                               |
 | `PATCH members/{user_id}/`        | Admin changes the existing membership role                                                                                                            |
 | `DELETE members/{user_id}/`       | Admin deactivates membership; user and registration records survive                                                                                   |
 | `POST import/`                    | Admin explicitly imports the uniquely identified legacy address page; empty body; idempotent receipt                                                  |
