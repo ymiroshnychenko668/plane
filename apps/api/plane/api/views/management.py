@@ -499,7 +499,7 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
         return Response(
             {
                 "extension": "plane-ce-management",
-                "version": 4,
+                "version": 5,
                 "base_plane_version": "1.4.2",
                 "capabilities": [
                     "workspaces",
@@ -517,6 +517,9 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "chat_agents",
                     "builds",
                     "teams",
+                    "assignment_routes",
+                    "dispatch_service_grants",
+                    "work_item_executions",
                 ],
                 "page_content": {
                     "input": "description_html",
