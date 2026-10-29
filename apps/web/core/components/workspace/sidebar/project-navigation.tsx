@@ -5,7 +5,7 @@
  */
 
 import React, { useCallback, useMemo } from "react";
-import { PackageCheck } from "lucide-react";
+import { PackageCheck, Users } from "lucide-react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
@@ -110,6 +110,16 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
         access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
         shouldRender: true,
         sortOrder: 3.5,
+      },
+      {
+        i18n_key: "sidebar.teams",
+        key: "teams",
+        name: "Teams",
+        href: `/${workspaceSlug}/projects/${projectId}/teams`,
+        icon: Users,
+        access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.GUEST],
+        shouldRender: true,
+        sortOrder: 3.6,
       },
       {
         i18n_key: "sidebar.views",
