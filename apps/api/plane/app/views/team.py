@@ -24,6 +24,7 @@ from plane.db.models import (
     Page,
     Project,
     ProjectAgentRegistration,
+    ProjectDispatchServiceGrant,
     ProjectMember,
     ProjectTeamContact,
     ProjectTeamMigration,
@@ -243,6 +244,8 @@ class TeamViewSet(BaseViewSet):
         data = serializer.validated_data
         project = self.project(lock=True)
         require_migrated(project)
+        if ProjectDispatchServiceGrant.objects.filter(project=project, sender_address=address).exists():
+            raise TeamConflict("This address is reserved for an assignment dispatch service.")
         actor = get_object_or_404(ProjectAgentRegistration, project=project, id=data["registration_id"])
         self.require_actor_manager(actor)
         target_value(actor.runtime, data["target"])

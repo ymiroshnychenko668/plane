@@ -5,7 +5,7 @@
  */
 
 import { useMemo, useCallback } from "react";
-import { PackageCheck, Users } from "lucide-react";
+import { PackageCheck, Users, Network } from "lucide-react";
 // plane imports
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { CycleIcon, IntakeIcon, ModuleIcon, PageIcon, ViewsIcon, WorkItemsIcon } from "@plane/propel/icons";
@@ -73,6 +73,20 @@ export const useNavigationItems = ({
         access: [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
         shouldRender: true,
         sortOrder: 3.5,
+      },
+      {
+        i18n_key: "sidebar.infrastructure",
+        key: "infrastructure",
+        name: "Infrastructure",
+        href: `/${workspaceSlug}/projects/${projectId}/infrastructure`,
+        icon: Network,
+        access: [
+          EUserPermissions.ADMIN,
+          EUserPermissions.MEMBER,
+          ...(project?.guest_view_all_features ? [EUserPermissions.GUEST] : []),
+        ],
+        shouldRender: true,
+        sortOrder: 3.7,
       },
       {
         i18n_key: "sidebar.teams",

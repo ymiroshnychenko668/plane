@@ -19,7 +19,10 @@ from .estimate import urlpatterns as estimate_patterns
 from .build import urlpatterns as build_patterns
 from .team import urlpatterns as team_patterns
 
+from .infrastructure import urlpatterns as infrastructure_patterns
+
 urlpatterns = [
+    *infrastructure_patterns,
     *team_patterns,
     *build_patterns,
     # Before DRF router roots at workspaces/<slug>/ (invites/stickies).

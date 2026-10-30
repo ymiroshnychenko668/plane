@@ -324,6 +324,12 @@ def webhook_send_task(
             timeout=30,
         )
 
+        # A receiver's temporary failure is a failed delivery, just as a
+        # transport timeout is. Preserve the actual HTTP status in its log.
+        # Permanent 4xx errors remain visible without retrying indefinitely.
+        if response.status_code >= 500 or response.status_code == 429:
+            response.raise_for_status()
+
         # Log the webhook request
         save_webhook_log(
             webhook=webhook,
@@ -344,9 +350,9 @@ def webhook_send_task(
             request_method=action,
             request_headers=headers,
             request_body=payload,
-            response_status=500,
-            response_headers="",
-            response_body=str(e),
+            response_status=e.response.status_code if e.response is not None else 500,
+            response_headers=e.response.headers if e.response is not None else "",
+            response_body=e.response.text if e.response is not None else str(e),
             retry_count=self.request.retries,
             event_type=event,
         )

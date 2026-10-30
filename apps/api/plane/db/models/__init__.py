@@ -93,3 +93,6 @@ from .description import Description, DescriptionVersion
 from .agent_registration import ProjectAgentRegistration
 from .build import Build, BuildResult
 from .team import ProjectTeamContact, ProjectTeamMigration
+from .assignment import ProjectAssignmentRoute, ProjectDispatchServiceGrant, WorkItemExecution, WorkItemExecutionClaim
+
+from .infrastructure import InfrastructureResource, InfrastructureProjectLink, InfrastructureRelation

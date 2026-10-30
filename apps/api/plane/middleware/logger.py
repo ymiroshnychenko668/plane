@@ -60,8 +60,11 @@ class RequestLoggerMiddleware:
         user_agent = request.META.get("HTTP_USER_AGENT", "")
 
         # Log the request information
+        # Inventory rejects credential-shaped input, including query parameters.
+        # Do not persist those rejected values before/after domain validation.
+        logged_path = request.path if "/infrastructure/" in request.path else request.get_full_path()
         api_logger.info(
-            f"{request.method} {request.get_full_path()} {response.status_code}",
+            f"{request.method} {logged_path} {response.status_code}",
             extra={
                 "path": request.path,
                 "method": request.method,
@@ -140,9 +143,11 @@ class APITokenLogMiddleware:
             # successful response nor a rejected request belongs in API logs.
             provisioning = "/project-provisioning/" in request.path
             chat_provisioning = "/chat-agents/" in request.path
+            infrastructure = "/infrastructure/" in request.path
             redaction = (
                 "[REDACTED project provisioning]" if provisioning
-                else "[REDACTED chat agent provisioning]" if chat_provisioning else None
+                else "[REDACTED chat agent provisioning]" if chat_provisioning
+                else "[REDACTED infrastructure metadata]" if infrastructure else None
             )
             log_data = {
                 # Tokenize the (high-entropy) API key into a stable, non-reversible
@@ -154,7 +159,7 @@ class APITokenLogMiddleware:
                 ).hexdigest(),
                 "path": request.path,
                 "method": request.method,
-                "query_params": request.META.get("QUERY_STRING", ""),
+                "query_params": "[REDACTED]" if infrastructure else request.META.get("QUERY_STRING", ""),
                 "headers": self._redacted_headers(request),
                 "body": redaction if redaction else (
                     self._safe_decode_body(request_body) if request_body else None
