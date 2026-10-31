@@ -749,3 +749,28 @@ def test_concurrent_edges_cannot_create_cycle(api_key_client, api_token, workspa
         outcomes = list(pool.map(write, [(first, second), (second, first)]))
     assert sorted(outcomes) == [201, 400]
     assert len(api_key_client.get(url(workspace, project, "relations/")).data["results"]) == 1
+
+
+def test_http_access_create_readback_patch_and_stale_cas(api_key_client, workspace, project, payload):
+    payload["access_methods"][0].update(kind="http", endpoint="http://monitoring.example.invalid:3000")
+    row = created(api_key_client, workspace, project, payload)
+    path = detail(workspace, project, row)
+    assert api_key_client.get(path).data["access_methods"] == row["access_methods"]
+    methods = deepcopy(row["access_methods"])
+    methods[0]["endpoint"] = "http://monitoring.example.invalid:9090"
+    changed = api_key_client.patch(path, {"access_methods": methods}, format="json", HTTP_IF_MATCH='"1"')
+    assert changed.status_code == 200 and changed.data["revision"] == 2
+    assert changed.data["access_methods"] == methods
+    error(api_key_client.patch(path, {"access_methods": row["access_methods"]},
+                              format="json", HTTP_IF_MATCH='"1"'), 412, "revision_conflict")
+    assert api_key_client.get(path).data["access_methods"] == methods
+
+
+@pytest.mark.parametrize("endpoint", [
+    "http://user:secret@monitoring.example.invalid", "http://monitoring.example.invalid/?token=value",
+    "http://monitoring.example.invalid/#part", "http://monitoring.example.invalid/path value",
+    "http://monitoring.example.invalid\\path", "https://monitoring.example.invalid",
+])
+def test_http_access_rejects_unsafe_or_mismatched_endpoint(api_key_client, workspace, project, payload, endpoint):
+    payload["access_methods"][0].update(kind="http", endpoint=endpoint)
+    error(create(api_key_client, workspace, project, payload), 400, "validation_error")

@@ -142,7 +142,7 @@ proof that the current actor can connect. Source revision differs from numeric
 optimistic-concurrency `revision`.
 
 Access methods (<=20) require unique slug `id` (1..64), `kind`
-(`ssh`,`https`,`postgresql`,`mysql`,`s3`,`smb`,`nfs`,`console`,`other`), `endpoint`
+(`ssh`,`http`,`https`,`postgresql`,`mysql`,`s3`,`smb`,`nfs`,`console`,`other`), `endpoint`
 (1..1024), `capability` (slug, 1..128), `operations` (1..30 unique slug strings,
 1..128), `scope` (1..1024) and `identity` (1..255, an informational identity
 selector, never a credential). `credential_refs` defaults [], <=10; each requires
@@ -152,7 +152,7 @@ KV API `/data/` component automatically; a literal logical segment `data` is val
 `field` (slug, 1..128), `purpose` (1..512). `notes` defaults empty, <=1000.
 There are no secret-value, headers, private-key, environment, executable probe or
 command fields. Endpoints must be absolute URIs of the declared scheme (console/
-other may use https); no userinfo, query, fragment or embedded credentials.
+other may use https). HTTP endpoints require explicit `kind=http`; they are not rewritten to HTTPS. No userinfo, query, fragment or embedded credentials.
 All text rejects control characters and recognizable credential assignments,
 Bearer tokens and PEM private keys. This is defense in depth, not a general secret
 detector: users must never paste secrets into names/descriptions/evidence either.

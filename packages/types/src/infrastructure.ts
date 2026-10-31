@@ -19,7 +19,7 @@ export type TInfrastructureOwner = { name: string; reference: string; recovery_c
 export type TInfrastructureCredentialRef = { provider: "openbao"; path: string; field: string; purpose: string };
 export type TInfrastructureAccess = {
   id: string;
-  kind: "ssh" | "https" | "postgresql" | "mysql" | "s3" | "smb" | "nfs" | "console" | "other";
+  kind: "ssh" | "http" | "https" | "postgresql" | "mysql" | "s3" | "smb" | "nfs" | "console" | "other";
   endpoint: string;
   capability: string;
   operations: string[];

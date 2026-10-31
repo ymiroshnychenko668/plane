@@ -145,7 +145,11 @@ export function parseAccessMethods(value: string): TInfrastructureAccess[] {
     if (!/^[a-z0-9][a-z0-9._:-]*$/.test(item.id) || ids.has(item.id))
       fail("Access method IDs must be unique lowercase slugs.");
     ids.add(item.id);
-    if (!["ssh", "https", "postgresql", "mysql", "s3", "smb", "nfs", "console", "other"].includes(String(item.kind)))
+    if (
+      !["ssh", "http", "https", "postgresql", "mysql", "s3", "smb", "nfs", "console", "other"].includes(
+        String(item.kind)
+      )
+    )
       fail("Access method kind is invalid.");
     text(item.endpoint, "Access endpoint");
     if (/[\s\\?#]/.test(item.endpoint))

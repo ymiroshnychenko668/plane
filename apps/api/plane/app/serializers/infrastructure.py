@@ -130,7 +130,7 @@ class UniqueSlugList(serializers.ListField):
 
 class AccessMethodInput(StrictSerializer):
     id = Slug(max_length=64)
-    kind = Choice(choices=("ssh", "https", "postgresql", "mysql", "s3", "smb", "nfs", "console", "other"))
+    kind = Choice(choices=("ssh", "http", "https", "postgresql", "mysql", "s3", "smb", "nfs", "console", "other"))
     endpoint = SafeText(max_length=1024)
     capability = Slug(max_length=128)
     operations = UniqueSlugList(child=Slug(max_length=128), min_length=1, max_length=30)

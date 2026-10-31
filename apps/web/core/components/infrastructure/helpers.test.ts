@@ -128,3 +128,20 @@ describe("Infrastructure failure semantics", () => {
     ).not.toContain("sensitive-value");
   });
 });
+
+describe("Explicit HTTP access metadata", () => {
+  it("preserves HTTP endpoints without a fabricated HTTPS scheme", () => {
+    const method = { ...access, kind: "http", endpoint: "http://monitoring.example.invalid:3000" };
+    expect(parseAccessMethods(JSON.stringify([method]))).toEqual([method]);
+  });
+  it.each([
+    "http://user:pass@example.invalid",
+    "http://example.invalid/?token=value",
+    "http://example.invalid/#part",
+    "http://example.invalid/path value",
+    "http://example.invalid\\path",
+    "https://example.invalid",
+  ])("rejects unsafe or mismatched HTTP endpoint %s", (endpoint) => {
+    expect(() => parseAccessMethods(JSON.stringify([{ ...access, kind: "http", endpoint }]))).toThrow();
+  });
+});
