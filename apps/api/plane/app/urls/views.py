@@ -3,6 +3,7 @@
 # See the LICENSE file for details.
 
 from django.urls import path
+from plane.app.views.view.managed import ProjectViewPreviewEndpoint, ProjectViewWorkItemsEndpoint
 
 
 from plane.app.views import (
@@ -14,6 +15,14 @@ from plane.app.views import (
 
 
 urlpatterns = [
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/views/preview/",
+        ProjectViewPreviewEndpoint.as_view(), name="project-view-preview",
+    ),
+    path(
+        "workspaces/<str:slug>/projects/<uuid:project_id>/views/<uuid:pk>/work-items/",
+        ProjectViewWorkItemsEndpoint.as_view(), name="project-view-work-items",
+    ),
     path(
         "workspaces/<str:slug>/projects/<uuid:project_id>/views/",
         IssueViewViewSet.as_view({"get": "list", "post": "create"}),

@@ -11,6 +11,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.db.models.functions import Coalesce, JSONObject
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from django.db.models import (
     Exists,
     F,
@@ -35,6 +36,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
 # Module imports
+from plane.utils.activity_writer import task_after_commit
 from .base import BaseAPIView, BaseViewSet
 
 # fetch the space app grouper function separately
@@ -212,6 +214,7 @@ class ProjectIssuesPublicEndpoint(BaseAPIView):
 
 
 class IssueCommentPublicViewSet(BaseViewSet):
+    capture_task_text = True
     serializer_class = IssueCommentSerializer
     model = IssueComment
 
@@ -227,13 +230,20 @@ class IssueCommentPublicViewSet(BaseViewSet):
 
     def get_queryset(self):
         try:
-            project_deploy_board = DeployBoard.objects.get(anchor=self.kwargs.get("anchor"), entity_name="project")
+            project_deploy_board = DeployBoard.objects.get(
+                anchor=self.kwargs.get("anchor"), entity_name="project", is_disabled=False
+            )
             if project_deploy_board.is_comments_enabled:
                 return self.filter_queryset(
                     super()
                     .get_queryset()
                     .filter(workspace_id=project_deploy_board.workspace_id)
-                    .filter(issue_id=self.kwargs.get("issue_id"))
+                    .filter(
+                        issue_id=self.kwargs.get("issue_id"),
+                        project_id=project_deploy_board.entity_identifier,
+                        issue__project_id=project_deploy_board.entity_identifier,
+                        issue__deleted_at__isnull=True,
+                    )
                     .filter(access="EXTERNAL")
                     .select_related("project")
                     .select_related("workspace")
@@ -242,7 +252,7 @@ class IssueCommentPublicViewSet(BaseViewSet):
                         is_member=Exists(
                             ProjectMember.objects.filter(
                                 workspace_id=project_deploy_board.workspace_id,
-                                project_id=project_deploy_board.project_id,
+                                project_id=project_deploy_board.entity_identifier,
                                 member_id=self.request.user.id,
                                 is_active=True,
                             )
@@ -255,7 +265,7 @@ class IssueCommentPublicViewSet(BaseViewSet):
             return IssueComment.objects.none()
 
     def create(self, request, anchor, issue_id):
-        project_deploy_board = DeployBoard.objects.get(anchor=anchor, entity_name="project")
+        project_deploy_board = get_object_or_404(DeployBoard, anchor=anchor, entity_name="project", is_disabled=False)
 
         if not project_deploy_board.is_comments_enabled:
             return Response(
@@ -263,54 +273,62 @@ class IssueCommentPublicViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        get_object_or_404(
+            Issue,
+            id=issue_id,
+            project_id=project_deploy_board.entity_identifier,
+            workspace_id=project_deploy_board.workspace_id,
+        )
         serializer = IssueCommentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(
-                project_id=project_deploy_board.project_id,
+                project_id=project_deploy_board.entity_identifier,
                 issue_id=issue_id,
                 actor=request.user,
                 access="EXTERNAL",
             )
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="comment.activity.created",
                 requested_data=json.dumps(serializer.data, cls=DjangoJSONEncoder),
                 actor_id=str(request.user.id),
                 issue_id=str(issue_id),
-                project_id=str(project_deploy_board.project_id),
+                project_id=str(project_deploy_board.entity_identifier),
                 current_instance=None,
                 epoch=int(timezone.now().timestamp()),
             )
             if not ProjectMember.objects.filter(
-                project_id=project_deploy_board.project_id,
+                project_id=project_deploy_board.entity_identifier,
                 member=request.user,
                 is_active=True,
             ).exists():
                 # Add the user for workspace tracking
                 _ = ProjectPublicMember.objects.get_or_create(
-                    project_id=project_deploy_board.project_id, member=request.user
+                    project_id=project_deploy_board.entity_identifier, member=request.user
                 )
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def partial_update(self, request, anchor, issue_id, pk):
-        project_deploy_board = DeployBoard.objects.get(anchor=anchor, entity_name="project")
+        project_deploy_board = get_object_or_404(DeployBoard, anchor=anchor, entity_name="project", is_disabled=False)
 
         if not project_deploy_board.is_comments_enabled:
             return Response(
                 {"error": "Comments are not enabled for this project"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        comment = IssueComment.objects.get(pk=pk, actor=request.user)
+        comment = get_object_or_404(self.get_queryset(), pk=pk, actor=request.user)
         serializer = IssueCommentSerializer(comment, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="comment.activity.updated",
                 requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
                 actor_id=str(request.user.id),
                 issue_id=str(issue_id),
-                project_id=str(project_deploy_board.project_id),
+                project_id=str(project_deploy_board.entity_identifier),
                 current_instance=json.dumps(IssueCommentSerializer(comment).data, cls=DjangoJSONEncoder),
                 epoch=int(timezone.now().timestamp()),
             )
@@ -318,20 +336,21 @@ class IssueCommentPublicViewSet(BaseViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, anchor, issue_id, pk):
-        project_deploy_board = DeployBoard.objects.get(anchor=anchor, entity_name="project")
+        project_deploy_board = get_object_or_404(DeployBoard, anchor=anchor, entity_name="project", is_disabled=False)
 
         if not project_deploy_board.is_comments_enabled:
             return Response(
                 {"error": "Comments are not enabled for this project"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        comment = IssueComment.objects.get(pk=pk, actor=request.user)
-        issue_activity.delay(
+        comment = get_object_or_404(self.get_queryset(), pk=pk, actor=request.user)
+        task_after_commit(
+            issue_activity,
             type="comment.activity.deleted",
             requested_data=json.dumps({"comment_id": str(pk)}),
             actor_id=str(request.user.id),
             issue_id=str(issue_id),
-            project_id=str(project_deploy_board.project_id),
+            project_id=str(project_deploy_board.entity_identifier),
             current_instance=json.dumps(IssueCommentSerializer(comment).data, cls=DjangoJSONEncoder),
             epoch=int(timezone.now().timestamp()),
         )
@@ -388,7 +407,8 @@ class IssueReactionPublicViewSet(BaseViewSet):
                 _ = ProjectPublicMember.objects.get_or_create(
                     project_id=project_deploy_board.project_id, member=request.user
                 )
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="issue_reaction.activity.created",
                 requested_data=json.dumps(self.request.data, cls=DjangoJSONEncoder),
                 actor_id=str(self.request.user.id),
@@ -414,7 +434,8 @@ class IssueReactionPublicViewSet(BaseViewSet):
             reaction=reaction_code,
             actor=request.user,
         )
-        issue_activity.delay(
+        task_after_commit(
+            issue_activity,
             type="issue_reaction.activity.deleted",
             requested_data=None,
             actor_id=str(self.request.user.id),
@@ -473,7 +494,8 @@ class CommentReactionPublicViewSet(BaseViewSet):
                 _ = ProjectPublicMember.objects.get_or_create(
                     project_id=project_deploy_board.project_id, member=request.user
                 )
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="comment_reaction.activity.created",
                 requested_data=json.dumps(self.request.data, cls=DjangoJSONEncoder),
                 actor_id=str(self.request.user.id),
@@ -500,7 +522,8 @@ class CommentReactionPublicViewSet(BaseViewSet):
             reaction=reaction_code,
             actor=request.user,
         )
-        issue_activity.delay(
+        task_after_commit(
+            issue_activity,
             type="comment_reaction.activity.deleted",
             requested_data=None,
             actor_id=str(self.request.user.id),
@@ -558,7 +581,8 @@ class IssueVotePublicViewSet(BaseViewSet):
             )
         issue_vote.vote = request.data.get("vote", 1)
         issue_vote.save()
-        issue_activity.delay(
+        task_after_commit(
+            issue_activity,
             type="issue_vote.activity.created",
             requested_data=json.dumps(self.request.data, cls=DjangoJSONEncoder),
             actor_id=str(self.request.user.id),
@@ -578,7 +602,8 @@ class IssueVotePublicViewSet(BaseViewSet):
             project_id=project_deploy_board.project_id,
             workspace_id=project_deploy_board.workspace_id,
         )
-        issue_activity.delay(
+        task_after_commit(
+            issue_activity,
             type="issue_vote.activity.deleted",
             requested_data=None,
             actor_id=str(self.request.user.id),

@@ -25,6 +25,7 @@ from rest_framework.viewsets import ModelViewSet
 # Module imports
 from plane.utils.exception_logger import log_exception
 from plane.utils.paginator import BasePaginator
+from plane.utils.activity_writer import ActivityWriterMixin
 from plane.authentication.session import BaseSessionAuthentication
 
 
@@ -42,7 +43,7 @@ class TimezoneMixin:
             timezone.deactivate()
 
 
-class BaseViewSet(TimezoneMixin, ModelViewSet, BasePaginator):
+class BaseViewSet(ActivityWriterMixin, TimezoneMixin, ModelViewSet, BasePaginator):
     model = None
 
     permission_classes = [IsAuthenticated]
@@ -130,7 +131,7 @@ class BaseViewSet(TimezoneMixin, ModelViewSet, BasePaginator):
             return self.kwargs.get("pk", None)
 
 
-class BaseAPIView(TimezoneMixin, APIView, BasePaginator):
+class BaseAPIView(ActivityWriterMixin, TimezoneMixin, APIView, BasePaginator):
     permission_classes = [IsAuthenticated]
 
     filter_backends = (DjangoFilterBackend, SearchFilter)

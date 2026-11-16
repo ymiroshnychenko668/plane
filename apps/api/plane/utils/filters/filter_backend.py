@@ -34,6 +34,8 @@ class ComplexFilterBackend(filters.BaseFilterBackend):
         Accepts explicit `filter_data` (dict or JSON string) or reads the
         `filter` query parameter. Enforces JSON-only filtering.
         """
+        from plane.utils.view_filters import reject_managed_predicates
+        reject_managed_predicates(dict(request.query_params))
         try:
             if filter_data is not None:
                 normalized = self._normalize_filter_data(filter_data, "filter_data")
@@ -79,6 +81,8 @@ class ComplexFilterBackend(filters.BaseFilterBackend):
 
     def _apply_json_filter(self, queryset, filter_data, view):
         """Process a JSON filter structure using Q object composition."""
+        from plane.utils.view_filters import reject_managed_predicates
+        reject_managed_predicates(filter_data)
         if not filter_data:
             return queryset
 

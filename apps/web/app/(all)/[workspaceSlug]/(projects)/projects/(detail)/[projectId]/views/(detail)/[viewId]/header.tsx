@@ -27,6 +27,7 @@ import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { SwitcherIcon, SwitcherLabel } from "@/components/common/switcher-label";
 import { DisplayFiltersSelection, FiltersDropdown, LayoutSelection } from "@/components/issues/issue-layouts/filters";
 import { ViewQuickActions } from "@/components/views/quick-actions";
+import { isScenarioView } from "@/components/views/scenario";
 import { WorkItemFiltersToggle } from "@/components/work-item-filters/filters-toggle";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
@@ -165,37 +166,39 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
         )}
       </Header.LeftItem>
       <Header.RightItem className="items-center">
-        <>
-          {!viewDetails.is_locked && (
-            <LayoutSelection
-              layouts={[
-                EIssueLayoutTypes.LIST,
-                EIssueLayoutTypes.KANBAN,
-                EIssueLayoutTypes.CALENDAR,
-                EIssueLayoutTypes.SPREADSHEET,
-                EIssueLayoutTypes.GANTT,
-              ]}
-              onChange={(layout) => handleLayoutChange(layout)}
-              selectedLayout={activeLayout}
-            />
-          )}
-          {viewId && <WorkItemFiltersToggle entityType={EIssuesStoreType.PROJECT_VIEW} entityId={viewId} />}
-          {!viewDetails.is_locked && (
-            <FiltersDropdown title="Display" placement="bottom-end">
-              <DisplayFiltersSelection
-                layoutDisplayFiltersOptions={
-                  activeLayout ? ISSUE_DISPLAY_FILTERS_BY_PAGE.issues.layoutOptions[activeLayout] : undefined
-                }
-                displayFilters={issueFilters?.displayFilters ?? {}}
-                handleDisplayFiltersUpdate={handleDisplayFilters}
-                displayProperties={issueFilters?.displayProperties ?? {}}
-                handleDisplayPropertiesUpdate={handleDisplayProperties}
-                cycleViewDisabled={!currentProjectDetails?.cycle_view}
-                moduleViewDisabled={!currentProjectDetails?.module_view}
+        {!isScenarioView(viewDetails) && (
+          <>
+            {!viewDetails.is_locked && (
+              <LayoutSelection
+                layouts={[
+                  EIssueLayoutTypes.LIST,
+                  EIssueLayoutTypes.KANBAN,
+                  EIssueLayoutTypes.CALENDAR,
+                  EIssueLayoutTypes.SPREADSHEET,
+                  EIssueLayoutTypes.GANTT,
+                ]}
+                onChange={(layout) => handleLayoutChange(layout)}
+                selectedLayout={activeLayout}
               />
-            </FiltersDropdown>
-          )}
-        </>
+            )}
+            {viewId && <WorkItemFiltersToggle entityType={EIssuesStoreType.PROJECT_VIEW} entityId={viewId} />}
+            {!viewDetails.is_locked && (
+              <FiltersDropdown title="Display" placement="bottom-end">
+                <DisplayFiltersSelection
+                  layoutDisplayFiltersOptions={
+                    activeLayout ? ISSUE_DISPLAY_FILTERS_BY_PAGE.issues.layoutOptions[activeLayout] : undefined
+                  }
+                  displayFilters={issueFilters?.displayFilters ?? {}}
+                  handleDisplayFiltersUpdate={handleDisplayFilters}
+                  displayProperties={issueFilters?.displayProperties ?? {}}
+                  handleDisplayPropertiesUpdate={handleDisplayProperties}
+                  cycleViewDisabled={!currentProjectDetails?.cycle_view}
+                  moduleViewDisabled={!currentProjectDetails?.module_view}
+                />
+              </FiltersDropdown>
+            )}
+          </>
+        )}
         {canUserCreateIssue && (
           <Button
             variant="primary"

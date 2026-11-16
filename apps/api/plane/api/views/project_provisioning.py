@@ -304,6 +304,7 @@ def ensure_agent(project, agent, payload, project_key):
     ):
         raise ProvisioningConflict("The agent API credential is inactive or belongs to another identity.")
     provisioning = {
+        **registration.provisioning,
         "project_key": project_key,
         "repository_url": payload["project"]["repository_url"],
         "manifest": canonical_manifest(payload),

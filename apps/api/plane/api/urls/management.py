@@ -7,6 +7,12 @@ from django.urls import path
 from plane.api.views.agent_registration import ProjectAgentRegistrationAPIEndpoint
 from plane.api.views.chat_agent import ProjectChatAgentAPIEndpoint
 from plane.api.views.project_provisioning import ProjectProvisioningAPIEndpoint
+from plane.api.views.my_work_items import MyWorkItemsAPIEndpoint
+from plane.api.views.assignment import (
+    AssignmentRouteAPIEndpoint,
+    DispatchServiceGrantAPIEndpoint,
+    WorkItemExecutionAPIEndpoint,
+)
 from plane.api.views.management import (
     ManagementCapabilitiesAPIEndpoint,
     PageContentAPIEndpoint,
@@ -42,6 +48,27 @@ urlpatterns = [
     ),
     path(project + "pages/", PageManagementViewSet.as_view({"get": "list", "post": "create"})),
     path(project + "agent-registrations/", ProjectAgentRegistrationAPIEndpoint.as_view()),
+    path(project + "my-work-items/", MyWorkItemsAPIEndpoint.as_view()),
+    path(project + "assignment-routes/", AssignmentRouteAPIEndpoint.as_view()),
+    path(project + "assignment-routes/<uuid:user_id>/", AssignmentRouteAPIEndpoint.as_view()),
+    path(project + "dispatch-service-grants/", DispatchServiceGrantAPIEndpoint.as_view()),
+    path(project + "dispatch-service-grants/<uuid:grant_id>/", DispatchServiceGrantAPIEndpoint.as_view()),
+    path(project + "work-items/<uuid:work_item_id>/execution/", WorkItemExecutionAPIEndpoint.as_view()),
+    path(
+        project + "work-items/<uuid:work_item_id>/execution/claim/",
+        WorkItemExecutionAPIEndpoint.as_view(),
+        {"operation": "claim"},
+    ),
+    path(
+        project + "work-items/<uuid:work_item_id>/execution/checkpoint/",
+        WorkItemExecutionAPIEndpoint.as_view(),
+        {"operation": "checkpoint"},
+    ),
+    path(
+        project + "work-items/<uuid:work_item_id>/execution/release/",
+        WorkItemExecutionAPIEndpoint.as_view(),
+        {"operation": "release"},
+    ),
     path(project + "chat-agents/<uuid:thread_id>/", ProjectChatAgentAPIEndpoint.as_view()),
     path(
         project + "agent-registrations/<str:runtime>/<str:agent_key>/",

@@ -499,7 +499,7 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
         return Response(
             {
                 "extension": "plane-ce-management",
-                "version": 4,
+                "version": 5,
                 "base_plane_version": "1.4.2",
                 "capabilities": [
                     "workspaces",
@@ -517,6 +517,13 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "chat_agents",
                     "builds",
                     "teams",
+                    "assignment_routes",
+                    "dispatch_service_grants",
+                    "work_item_executions",
+                    "my_work_items",
+                    "infrastructure",
+                    "views",
+                    "meaningful_activity",
                 ],
                 "page_content": {
                     "input": "description_html",
@@ -524,6 +531,47 @@ class ManagementCapabilitiesAPIEndpoint(APIKeyManagementMixin, BaseAPIView):
                     "live_required": True,
                     "revision_header": "If-Match",
                 },
+                "infrastructure": {
+                    "version": 1,
+                    "resource_kinds": [
+                        "physical_host", "vm", "lxc", "service", "database", "storage", "network", "stack"
+                    ],
+                    "relation_kinds": ["runs_on", "depends_on"],
+                    "project_link_kind": "serves_project",
+                    "pagination": {"style": "cursor", "default_per_page": 50, "max_per_page": 100},
+                    "revision_header": "If-Match",
+                    "secret_values": False,
+                },
                 "native_releases": False,
+                "views": {
+                    "version": 1,
+                    "scope": "project",
+                    "predicates": ["meaningful_activity__older_than_days", "assignee_id__is_empty"],
+                    "boolean_operators": ["and"],
+                    "policy_version": "meaningful_activity_v1",
+                    "source_schema_version": "task_text_v1",
+                    "layouts": ["list"],
+                    "revision_header": "If-Match",
+                    "create_request_id_required": True,
+                    "pagination": {"style": "cursor", "default_per_page": 50, "max_per_page": 100},
+                    "limits": {"max_conditions": 32, "max_filter_bytes": 32768, "min_days": 1, "max_days": 36500},
+                    "time": {
+                        "cutoff": "evaluated_at minus elapsed 24-hour days",
+                        "comparison": "strictly older", "consistency": "live",
+                    },
+                    "preview": {"method": "POST", "read_only": True, "max_rows": 100},
+                    "partitions": ["matches", "needs_review"],
+                },
+                "meaningful_activity": {
+                    "version": 1, "scope": "project", "policy_version": "meaningful_activity_v1",
+                    "source_schema_version": "task_text_v1", "sources": ["description", "comment"],
+                    "decisions": ["meaningful", "routine", "needs_review"],
+                    "meaningful_categories": ["implementation", "investigation", "verification", "decision", "blocker"],
+                    "revision_header": "If-Match", "request_id_required": True,
+                    "time": "native authenticated source transaction; unknown for import and unattributed writes",
+                    "pending": {"scope": "project", "independent_of_stale_views": True, "consistency": "live"},
+                    "capture": "transactional database triggers; historical baseline has unknown time",
+                    "read_only_gets": True, "max_per_page": 100,
+                },
             }
         )

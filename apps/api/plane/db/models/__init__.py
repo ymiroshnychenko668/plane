@@ -63,7 +63,7 @@ from .session import Session
 from .social_connection import SocialLoginConnection
 from .state import State, StateGroup, DEFAULT_STATES
 from .user import Account, Profile, User, BotTypeEnum
-from .view import IssueView
+from .view import IssueView, IssueViewCreateReceipt
 from .webhook import Webhook, WebhookLog
 from .workspace import (
     Workspace,
@@ -93,3 +93,13 @@ from .description import Description, DescriptionVersion
 from .agent_registration import ProjectAgentRegistration
 from .build import Build, BuildResult
 from .team import ProjectTeamContact, ProjectTeamMigration
+from .assignment import ProjectAssignmentRoute, ProjectDispatchServiceGrant, WorkItemExecution, WorkItemExecutionClaim
+
+from .infrastructure import InfrastructureResource, InfrastructureProjectLink, InfrastructureRelation
+from .meaningful_activity import (
+    ActivityCoverage,
+    ActivitySourceEvent,
+    ActivityAssessment,
+    ActivityAssessmentRevision,
+    ActivityAssessmentReceipt,
+)

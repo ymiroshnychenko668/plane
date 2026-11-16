@@ -210,6 +210,50 @@ def test_manual_edits_preserved_and_missing_templates_added(api_key_client, work
     assert second["manifest_digest"] != first["manifest_digest"]
 
 
+@pytest.mark.parametrize("runtime,agent_key", [("codex", "project"), ("hermes", "rte")])
+def test_reprovisioning_preserves_team_responsibility_and_registration_metadata(
+    api_key_client, workspace, payload, runtime, agent_key
+):
+    payload["agent"].update(runtime=runtime, key=agent_key)
+    first = provision(api_key_client, workspace, payload).data
+    registration = ProjectAgentRegistration.objects.get(id=first["agent"]["registration_id"])
+    registration.provisioning["operator_note"] = {"scope": "release checks"}
+    registration.save(update_fields=["provisioning"])
+    own_client = APIClient()
+    own_client.credentials(HTTP_X_API_KEY=first["credential"]["api_key"])
+    team_url = f"/api/v1/workspaces/{workspace.slug}/projects/{first['project']['id']}/team/"
+    responsibility = "Review assigned releases and report build failures."
+    updated = own_client.patch(
+        f"{team_url}agents/{registration.id}/",
+        {"role": responsibility},
+        format="json",
+        HTTP_IF_MATCH=f'"{registration.revision}"',
+    )
+    assert updated.status_code == 200, updated.data
+    registration.refresh_from_db()
+    metadata, revision = deepcopy(registration.provisioning), registration.revision
+
+    repeated = provision(api_key_client, workspace, deepcopy(payload))
+    registration.refresh_from_db()
+    assert repeated.data == first
+    assert registration.provisioning == metadata
+    assert registration.revision == revision
+
+    payload["project"]["description"] = "Updated project description"
+    changed = provision(api_key_client, workspace, payload).data
+    registration.refresh_from_db()
+    assert changed["manifest_digest"] != first["manifest_digest"]
+    assert registration.provisioning["manifest_digest"] == changed["manifest_digest"]
+    assert registration.provisioning["manifest"]["project"]["description"] == "Updated project description"
+    assert registration.provisioning["operator_note"] == metadata["operator_note"]
+    assert registration.provisioning["role"] == responsibility
+    assert registration.revision == revision + 1
+    roster = own_client.get(team_url)
+    assert roster.status_code == 200, roster.data
+    actor = next(row for row in roster.data["actors"] if row["registration_id"] == str(registration.id))
+    assert actor["role"] == responsibility
+
+
 def test_codec_failure_leaves_no_partial_project_user_or_credential(
     api_key_client, workspace, payload, local_dependencies
 ):

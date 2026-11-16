@@ -28,6 +28,10 @@ export interface IProjectView {
   name: string;
   description: string;
   rich_filters: TWorkItemFilterExpression;
+  /** Versioned project View definitions bypass the legacy filter adapter. */
+  filter_meta?: Record<string, unknown>;
+  revision?: number;
+  request_id?: string;
   display_filters: IIssueDisplayFilterOptions;
   display_properties: IIssueDisplayProperties;
   query: IIssueFilterOptions;
@@ -39,6 +43,33 @@ export interface IProjectView {
   anchor?: string;
   owned_by: string;
 }
+
+export type TProjectViewPartition = "matches" | "needs_review";
+
+export type TProjectViewWorkItem = {
+  id: string;
+  name: string;
+  sequence_id: number;
+  project_id: string;
+  state_id: string;
+  priority: string;
+  assignee_ids: string[];
+  activity?: { match: boolean | null; last_meaningful_at: string | null; reason: string };
+};
+
+export type TProjectViewEvaluation = {
+  results: TProjectViewWorkItem[];
+  next_page_results: boolean;
+  next_cursor: string | null;
+  evaluated_at: string;
+  cutoff_at: string | null;
+  policy_version: string | null;
+  view_revision: number | null;
+  counts: { matches: number; needs_review: number };
+  counts_observed_at: string;
+  assessment_complete: boolean;
+  consistency: "live";
+};
 
 export interface IPublishedProjectView extends Omit<IProjectView, "rich_filters"> {
   filters: IIssueFilterOptions;

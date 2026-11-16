@@ -19,6 +19,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 # Module imports
+from plane.utils.activity_writer import task_after_commit
 from ..base import BaseViewSet
 from plane.app.permissions import allow_permission, ROLE
 from plane.db.models import (
@@ -93,6 +94,7 @@ class IntakeViewSet(BaseViewSet):
 
 
 class IntakeIssueViewSet(BaseViewSet):
+    capture_task_text = True
     serializer_class = IntakeIssueSerializer
     model = IntakeIssue
 
@@ -277,7 +279,8 @@ class IntakeIssueViewSet(BaseViewSet):
                 source=SourceType.IN_APP,
             )
             # Create an Issue Activity
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="issue.activity.created",
                 requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
                 actor_id=str(request.user.id),
@@ -290,7 +293,8 @@ class IntakeIssueViewSet(BaseViewSet):
                 intake=str(intake_issue.id),
             )
             # updated issue description version
-            issue_description_version_task.delay(
+            task_after_commit(
+                issue_description_version_task,
                 updated_issue=json.dumps(request.data, cls=DjangoJSONEncoder),
                 issue_id=str(serializer.data["id"]),
                 user_id=request.user.id,
@@ -438,7 +442,8 @@ class IntakeIssueViewSet(BaseViewSet):
             # Log all the updates
             if not is_migration_description_update:
                 if issue is not None:
-                    issue_activity.delay(
+                    task_after_commit(
+                        issue_activity,
                         type="issue.activity.updated",
                         requested_data=issue_requested_data,
                         actor_id=str(request.user.id),
@@ -451,7 +456,8 @@ class IntakeIssueViewSet(BaseViewSet):
                         intake=str(intake_issue.id),
                     )
                     # updated issue description version
-                    issue_description_version_task.delay(
+                    task_after_commit(
+                        issue_description_version_task,
                         updated_issue=issue_current_instance,
                         issue_id=str(pk),
                         user_id=request.user.id,
@@ -460,7 +466,8 @@ class IntakeIssueViewSet(BaseViewSet):
         if intake_serializer:
             intake_serializer.save()
             # create a activity for status change
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="intake.activity.created",
                 requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
                 actor_id=str(request.user.id),

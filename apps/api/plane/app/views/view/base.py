@@ -47,6 +47,7 @@ from .. import BaseViewSet
 from plane.db.models import UserFavorite
 from plane.utils.filters import ComplexFilterBackend
 from plane.utils.filters import IssueFilterSet
+from plane.services.views import ProjectViews, managed
 
 
 class WorkspaceViewViewSet(BaseViewSet):
@@ -86,7 +87,9 @@ class WorkspaceViewViewSet(BaseViewSet):
     @allow_permission(allowed_roles=[], level="WORKSPACE", creator=True, model=IssueView)
     def partial_update(self, request, slug, pk):
         with transaction.atomic():
-            workspace_view = IssueView.objects.select_for_update().get(pk=pk, workspace__slug=slug)
+            workspace_view = IssueView.objects.select_for_update().get(
+                pk=pk, workspace__slug=slug, project__isnull=True
+            )
 
             if workspace_view.is_locked:
                 return Response({"error": "view is locked"}, status=status.HTTP_400_BAD_REQUEST)
@@ -119,7 +122,7 @@ class WorkspaceViewViewSet(BaseViewSet):
 
     @allow_permission(allowed_roles=[ROLE.ADMIN], level="WORKSPACE", creator=True, model=IssueView)
     def destroy(self, request, slug, pk):
-        workspace_view = IssueView.objects.get(pk=pk, workspace__slug=slug)
+        workspace_view = IssueView.objects.get(pk=pk, workspace__slug=slug, project__isnull=True)
 
         workspace_member = WorkspaceMember.objects.filter(
             workspace__slug=slug, member=request.user, role=20, is_active=True
@@ -263,6 +266,19 @@ class IssueViewViewSet(BaseViewSet):
     serializer_class = IssueViewSerializer
     model = IssueView
 
+    def create(self, request, slug, project_id):
+        if "filter_meta" in request.data:
+            service = ProjectViews(request, slug, project_id)
+            view, created = service.create(request.data)
+            return Response(
+                service.serialize(view), status=201 if created else 200, headers={"ETag": f'"{view.revision}"'}
+            )
+        return super().create(request)
+
+    def update(self, request, slug, project_id, pk):
+        # PUT must not inherit ModelViewSet.update and bypass the managed CAS path.
+        return self.partial_update(request, slug=slug, project_id=project_id, pk=pk)
+
     def perform_create(self, serializer):
         serializer.save(project_id=self.kwargs.get("project_id"), owned_by=self.request.user)
 
@@ -313,6 +329,10 @@ class IssueViewViewSet(BaseViewSet):
 
     @allow_permission(allowed_roles=[ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def retrieve(self, request, slug, project_id, pk):
+        service = ProjectViews(request, slug, project_id)
+        view = service.get(pk)
+        if managed(view):
+            return Response(service.serialize(view), headers={"ETag": f'"{view.revision}"'})
         issue_view = self.get_queryset().filter(pk=pk, project_id=project_id).first()
         project = Project.objects.get(id=project_id)
         """
@@ -346,8 +366,11 @@ class IssueViewViewSet(BaseViewSet):
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @allow_permission(allowed_roles=[], creator=True, model=IssueView)
     def partial_update(self, request, slug, project_id, pk):
+        service = ProjectViews(request, slug, project_id)
+        if managed(service.get(pk)) or "filter_meta" in request.data:
+            view = service.update(pk, request.data)
+            return Response(service.serialize(view), headers={"ETag": f'"{view.revision}"'})
         with transaction.atomic():
             issue_view = IssueView.objects.select_for_update().get(pk=pk, workspace__slug=slug, project_id=project_id)
 
@@ -368,8 +391,11 @@ class IssueViewViewSet(BaseViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @allow_permission(allowed_roles=[ROLE.ADMIN], creator=True, model=IssueView)
     def destroy(self, request, slug, project_id, pk):
+        service = ProjectViews(request, slug, project_id)
+        if managed(service.get(pk)):
+            service.delete(pk)
+            return Response(status=204)
         project_view = IssueView.objects.get(pk=pk, project_id=project_id, workspace__slug=slug)
         if (
             ProjectMember.objects.filter(

@@ -63,3 +63,4 @@ export * from "./base-layouts";
 export * from "./pagination";
 
 export * from "./team";
+export * from "./infrastructure";

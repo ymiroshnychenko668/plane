@@ -11,6 +11,7 @@ from django.utils import timezone
 
 # Module imports
 from plane.bgtasks.deletion_task import soft_delete_related_objects
+from plane.utils.activity_writer import task_after_commit
 
 
 class TimeAuditModel(models.Model):
@@ -75,7 +76,9 @@ class SoftDeleteModel(models.Model):
             self.deleted_at = timezone.now()
             self.save(using=using)
 
-            soft_delete_related_objects.delay(self._meta.app_label, self._meta.model_name, self.pk, using=using)
+            task_after_commit(
+                soft_delete_related_objects, self._meta.app_label, self._meta.model_name, self.pk, using=using
+            )
 
         else:
             # Perform hard delete if soft deletion is not enabled

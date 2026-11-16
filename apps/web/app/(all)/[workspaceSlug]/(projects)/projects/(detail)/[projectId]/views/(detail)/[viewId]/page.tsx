@@ -12,6 +12,8 @@ import emptyView from "@/app/assets/empty-state/view.svg?url";
 import { EmptyState } from "@/components/common/empty-state";
 import { PageHead } from "@/components/core/page-title";
 import { ProjectViewLayoutRoot } from "@/components/issues/issue-layouts/roots/project-view-layout-root";
+import { isScenarioView } from "@/components/views/scenario";
+import { ScenarioViewResults } from "@/components/views/scenario-results";
 // hooks
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectView } from "@/hooks/store/use-project-view";
@@ -49,7 +51,22 @@ function ProjectViewIssuesPage({ params }: Route.ComponentProps) {
   return (
     <>
       <PageHead title={pageTitle} />
-      <ProjectViewLayoutRoot />
+      {projectView ? (
+        isScenarioView(projectView) ? (
+          <ScenarioViewResults
+            key={`${projectView.id}:${projectView.revision}`}
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            view={projectView}
+          />
+        ) : (
+          <ProjectViewLayoutRoot />
+        )
+      ) : (
+        <p role="status" className="p-4">
+          Loading View…
+        </p>
+      )}
     </>
   );
 }

@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # Module imports
+from plane.utils.activity_writer import task_after_commit
 from .. import BaseViewSet
 from plane.app.serializers import IssueCommentSerializer, CommentReactionSerializer
 from plane.app.permissions import allow_permission, ROLE
@@ -26,6 +27,7 @@ from plane.bgtasks.webhook_task import model_activity
 
 
 class IssueCommentViewSet(BaseViewSet):
+    capture_task_text = True
     serializer_class = IssueCommentSerializer
     model = IssueComment
     webhook_event = "issue_comment"
@@ -82,7 +84,8 @@ class IssueCommentViewSet(BaseViewSet):
         serializer = IssueCommentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(project_id=project_id, issue_id=issue_id, actor=request.user)
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="comment.activity.created",
                 requested_data=json.dumps(serializer.data, cls=DjangoJSONEncoder),
                 actor_id=str(self.request.user.id),
@@ -94,7 +97,8 @@ class IssueCommentViewSet(BaseViewSet):
                 origin=base_host(request=request, is_app=True),
             )
             # Send the model activity
-            model_activity.delay(
+            task_after_commit(
+                model_activity,
                 model_name="issue_comment",
                 model_id=str(serializer.data["id"]),
                 requested_data=request.data,
@@ -117,7 +121,8 @@ class IssueCommentViewSet(BaseViewSet):
                 serializer.save(edited_at=timezone.now())
             else:
                 serializer.save()
-            issue_activity.delay(
+            task_after_commit(
+                issue_activity,
                 type="comment.activity.updated",
                 requested_data=requested_data,
                 actor_id=str(request.user.id),
@@ -129,7 +134,8 @@ class IssueCommentViewSet(BaseViewSet):
                 origin=base_host(request=request, is_app=True),
             )
             # Send the model activity
-            model_activity.delay(
+            task_after_commit(
+                model_activity,
                 model_name="issue_comment",
                 model_id=str(pk),
                 requested_data=request.data,
@@ -146,7 +152,8 @@ class IssueCommentViewSet(BaseViewSet):
         issue_comment = IssueComment.objects.get(workspace__slug=slug, project_id=project_id, issue_id=issue_id, pk=pk)
         current_instance = json.dumps(IssueCommentSerializer(issue_comment).data, cls=DjangoJSONEncoder)
         issue_comment.delete()
-        issue_activity.delay(
+        task_after_commit(
+            issue_activity,
             type="comment.activity.deleted",
             requested_data=json.dumps({"comment_id": str(pk)}),
             actor_id=str(request.user.id),
@@ -190,7 +197,8 @@ class CommentReactionViewSet(BaseViewSet):
                     actor_id=request.user.id,
                     comment_id=comment_id,
                 )
-                issue_activity.delay(
+                task_after_commit(
+                    issue_activity,
                     type="comment_reaction.activity.created",
                     requested_data=json.dumps(request.data, cls=DjangoJSONEncoder),
                     actor_id=str(request.user.id),
@@ -218,7 +226,8 @@ class CommentReactionViewSet(BaseViewSet):
             reaction=reaction_code,
             actor=request.user,
         )
-        issue_activity.delay(
+        task_after_commit(
+            issue_activity,
             type="comment_reaction.activity.deleted",
             requested_data=None,
             actor_id=str(self.request.user.id),

@@ -41,7 +41,7 @@ export interface IProjectViewStore {
     viewId: string,
     data: Partial<IProjectView>
   ) => Promise<IProjectView>;
-  deleteView: (workspaceSlug: string, projectId: string, viewId: string) => Promise<any>;
+  deleteView: (workspaceSlug: string, projectId: string, viewId: string, revision?: number) => Promise<any>;
   updateFilters: <T extends keyof TViewFilters>(filterKey: T, filterValue: TViewFilters[T]) => void;
   clearAllFilters: () => void;
   // favorites actions
@@ -229,11 +229,16 @@ export class ProjectViewStore implements IProjectViewStore {
   ): Promise<IProjectView> {
     const currentView = this.getViewById(viewId);
 
+    const response = await this.viewService.patchView(
+      workspaceSlug,
+      projectId,
+      viewId,
+      data,
+      data.revision ?? currentView?.revision
+    );
     runInAction(() => {
-      set(this.viewMap, [viewId], { ...currentView, ...data });
+      set(this.viewMap, [viewId], response);
     });
-
-    const response = await this.viewService.patchView(workspaceSlug, projectId, viewId, data);
 
     return response;
   }
@@ -245,12 +250,11 @@ export class ProjectViewStore implements IProjectViewStore {
    * @param viewId
    * @returns
    */
-  deleteView = async (workspaceSlug: string, projectId: string, viewId: string): Promise<any> => {
-    await this.viewService.deleteView(workspaceSlug, projectId, viewId).then(() => {
-      runInAction(() => {
-        delete this.viewMap[viewId];
-        if (this.rootStore.favorite.entityMap[viewId]) this.rootStore.favorite.removeFavoriteFromStore(viewId);
-      });
+  deleteView = async (workspaceSlug: string, projectId: string, viewId: string, revision?: number): Promise<any> => {
+    await this.viewService.deleteView(workspaceSlug, projectId, viewId, revision ?? this.getViewById(viewId)?.revision);
+    runInAction(() => {
+      delete this.viewMap[viewId];
+      if (this.rootStore.favorite.entityMap[viewId]) this.rootStore.favorite.removeFavoriteFromStore(viewId);
     });
   };
 

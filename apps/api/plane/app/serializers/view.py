@@ -66,7 +66,19 @@ class IssueViewSerializer(DynamicBaseSerializer):
             "owned_by",
             "access",
             "is_locked",
+            "revision",
+            "filter_meta",
         ]
+
+    def validate(self, attrs):
+        from plane.utils.view_filters import reject_managed_predicates
+        if self.initial_data.get("filter_meta"):
+            raise serializers.ValidationError("Versioned Views require the project View service.")
+        if self.instance is not None and self.instance.filter_meta:
+            raise serializers.ValidationError("Versioned Views must use the project View service and If-Match.")
+        reject_managed_predicates(attrs.get("rich_filters", {}))
+        reject_managed_predicates(attrs.get("filters", {}))
+        return attrs
 
     def create(self, validated_data):
         query_params = validated_data.get("filters", {})

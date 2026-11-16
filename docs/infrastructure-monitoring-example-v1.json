@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "synthetic": true,
+  "usage": "POST each resources entry separately with If-Match \"0\". Resolve relation source_key/target_key in the same project, replace them with source_id/target_id, then POST relations. This file is not a bulk API request or an importer.",
+  "resources": [
+    {
+      "key": "monitoring",
+      "name": "Monitoring stack",
+      "kind": "stack",
+      "lifecycle": "planned",
+      "description": "Synthetic documentation example; no live discovery or access verification.",
+      "tags": ["monitoring"],
+      "owner": {
+        "name": "Example operations",
+        "reference": "team:operations",
+        "recovery_contact": "role:supervisor"
+      },
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [
+        {
+          "kind": "document",
+          "reference": "doc:synthetic-monitoring-layout",
+          "observed_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "last_verified": null,
+      "access_methods": []
+    },
+    {
+      "key": "monitoring/grafana",
+      "name": "Grafana",
+      "kind": "service",
+      "lifecycle": "planned",
+      "description": "Synthetic documentation example; no live discovery or access verification.",
+      "tags": ["monitoring"],
+      "owner": {
+        "name": "Example operations",
+        "reference": "team:operations",
+        "recovery_contact": "role:supervisor"
+      },
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [
+        {
+          "kind": "document",
+          "reference": "doc:synthetic-monitoring-layout",
+          "observed_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "last_verified": null,
+      "access_methods": [
+        {
+          "id": "grafana-api",
+          "kind": "https",
+          "endpoint": "https://grafana.example.invalid",
+          "capability": "grafana",
+          "operations": ["dashboards.read", "datasources.read"],
+          "scope": "Monitoring organization",
+          "identity": "runtime-own-identity",
+          "credential_refs": [
+            {
+              "provider": "openbao",
+              "path": "projects/example/monitoring/grafana",
+              "field": "api_token",
+              "purpose": "Use only credentials already assigned to the invoking runtime."
+            }
+          ],
+          "notes": "Metadata does not establish connectivity or grant access."
+        }
+      ]
+    },
+    {
+      "key": "monitoring/prometheus",
+      "name": "Prometheus",
+      "kind": "service",
+      "lifecycle": "planned",
+      "description": "Synthetic documentation example; no live discovery or access verification.",
+      "tags": ["monitoring"],
+      "owner": {
+        "name": "Example operations",
+        "reference": "team:operations",
+        "recovery_contact": "role:supervisor"
+      },
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [
+        {
+          "kind": "document",
+          "reference": "doc:synthetic-monitoring-layout",
+          "observed_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "last_verified": null,
+      "access_methods": [
+        {
+          "id": "prometheus-api",
+          "kind": "https",
+          "endpoint": "https://prometheus.example.invalid",
+          "capability": "prometheus",
+          "operations": ["query", "targets.read"],
+          "scope": "Monitoring metrics",
+          "identity": "runtime-own-identity",
+          "credential_refs": [
+            {
+              "provider": "openbao",
+              "path": "projects/example/monitoring/prometheus",
+              "field": "api_token",
+              "purpose": "Use only credentials already assigned to the invoking runtime."
+            }
+          ],
+          "notes": "Metadata does not establish connectivity or grant access."
+        }
+      ]
+    },
+    {
+      "key": "monitoring/vm",
+      "name": "Monitoring VM",
+      "kind": "vm",
+      "lifecycle": "planned",
+      "description": "Synthetic documentation example; no live discovery or access verification.",
+      "tags": ["monitoring"],
+      "owner": {
+        "name": "Example operations",
+        "reference": "team:operations",
+        "recovery_contact": "role:supervisor"
+      },
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [
+        {
+          "kind": "document",
+          "reference": "doc:synthetic-monitoring-layout",
+          "observed_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "last_verified": null,
+      "access_methods": [
+        {
+          "id": "monitoring-host",
+          "kind": "ssh",
+          "endpoint": "ssh://monitoring-vm.example.invalid",
+          "capability": "ssh",
+          "operations": ["services.read", "services.restart", "config.read", "config.write"],
+          "scope": "Monitoring VM services grafana-server and prometheus; assigned configuration paths only",
+          "identity": "runtime-own-identity",
+          "credential_refs": [
+            {
+              "provider": "openbao",
+              "path": "projects/example/monitoring/host",
+              "field": "private_key",
+              "purpose": "Use only credentials already assigned to the invoking runtime."
+            }
+          ],
+          "notes": "Metadata does not establish connectivity or grant access."
+        }
+      ]
+    },
+    {
+      "key": "lab/host",
+      "name": "Example physical host",
+      "kind": "physical_host",
+      "lifecycle": "planned",
+      "description": "Synthetic documentation example; no live discovery or access verification.",
+      "tags": ["monitoring"],
+      "owner": {
+        "name": "Example operations",
+        "reference": "team:operations",
+        "recovery_contact": "role:supervisor"
+      },
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [
+        {
+          "kind": "document",
+          "reference": "doc:synthetic-monitoring-layout",
+          "observed_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "last_verified": null,
+      "access_methods": []
+    }
+  ],
+  "relations": [
+    {
+      "source_key": "monitoring",
+      "target_key": "monitoring/grafana",
+      "kind": "depends_on",
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [],
+      "last_verified": null
+    },
+    {
+      "source_key": "monitoring",
+      "target_key": "monitoring/prometheus",
+      "kind": "depends_on",
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [],
+      "last_verified": null
+    },
+    {
+      "source_key": "monitoring/grafana",
+      "target_key": "monitoring/prometheus",
+      "kind": "depends_on",
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [],
+      "last_verified": null
+    },
+    {
+      "source_key": "monitoring/grafana",
+      "target_key": "monitoring/vm",
+      "kind": "runs_on",
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [],
+      "last_verified": null
+    },
+    {
+      "source_key": "monitoring/prometheus",
+      "target_key": "monitoring/vm",
+      "kind": "runs_on",
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [],
+      "last_verified": null
+    },
+    {
+      "source_key": "monitoring/vm",
+      "target_key": "lab/host",
+      "kind": "runs_on",
+      "source": {
+        "kind": "git",
+        "reference": "repo:example/infrastructure/monitoring",
+        "revision": "synthetic-v1"
+      },
+      "evidence": [],
+      "last_verified": null
+    }
+  ]
+}

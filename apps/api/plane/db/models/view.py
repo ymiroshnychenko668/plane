@@ -63,6 +63,9 @@ class IssueView(WorkspaceBaseModel):
     display_filters = models.JSONField(default=get_default_display_filters)
     display_properties = models.JSONField(default=get_default_display_properties)
     rich_filters = models.JSONField(default=dict)
+    # Empty metadata preserves the legacy native View contract.
+    filter_meta = models.JSONField(default=dict)
+    revision = models.PositiveBigIntegerField(default=1)
     access = models.PositiveSmallIntegerField(default=1, choices=((0, "Private"), (1, "Public")))
     sort_order = models.FloatField(default=65535)
     logo_props = models.JSONField(default=dict)
@@ -97,3 +100,20 @@ class IssueView(WorkspaceBaseModel):
     def __str__(self):
         """Return name of the View"""
         return f"{self.name} <{self.project.name}>"
+
+
+class IssueViewCreateReceipt(models.Model):
+    """Durable actor/project idempotency, retained after View deletion."""
+
+    project = models.ForeignKey("db.Project", on_delete=models.CASCADE)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    request_id = models.CharField(max_length=128)
+    payload_hash = models.CharField(max_length=64)
+    view_id = models.UUIDField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "issue_view_create_receipts"
+        constraints = [
+            models.UniqueConstraint(fields=["project", "actor", "request_id"], name="view_create_actor_request_unique")
+        ]

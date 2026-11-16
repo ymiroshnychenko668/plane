@@ -5,6 +5,7 @@
   "license": "AGPL-3.0",
   "type": "module",
   "scripts": {
+    "test:infrastructure": "vitest run core/components/infrastructure",
     "test:builds": "vitest run core/components/builds",
     "test:teams": "vitest run core/components/teams",
     "dev": "react-router dev --port 3000",

@@ -25,7 +25,12 @@ from .exporter import urlpatterns as exporter_urls
 from .build import urlpatterns as build_urls
 from .team import urlpatterns as team_urls
 
+from .infrastructure import urlpatterns as infrastructure_urls
+from .meaningful_activity import urlpatterns as meaningful_activity_urls
+
 urlpatterns = [
+    *meaningful_activity_urls,
+    *infrastructure_urls,
     *team_urls,
     *build_urls,
     *analytic_urls,

@@ -426,6 +426,8 @@ def filter_logged_by(params, issue_filter, method, prefix=""):
 
 
 def issue_filters(query_params, method, prefix=""):
+    from plane.utils.view_filters import reject_managed_predicates
+    reject_managed_predicates(dict(query_params))
     issue_filter = {}
 
     ISSUE_FILTER = {

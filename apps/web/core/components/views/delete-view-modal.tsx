@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { observer } from "mobx-react";
 import { useParams, useRouter } from "next/navigation";
 // types
@@ -15,6 +15,7 @@ import type { IProjectView } from "@plane/types";
 import { AlertModalCore } from "@plane/ui";
 // hooks
 import { useProjectView } from "@/hooks/store/use-project-view";
+import { viewErrorMessage } from "./scenario";
 
 type Props = {
   data: IProjectView;
@@ -23,7 +24,8 @@ type Props = {
 };
 
 export const DeleteProjectViewModal = observer(function DeleteProjectViewModal(props: Props) {
-  const { data, isOpen, onClose } = props;
+  const { data: incomingData, isOpen, onClose } = props;
+  const data = useRef(incomingData).current;
   // states
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   // router
@@ -41,7 +43,7 @@ export const DeleteProjectViewModal = observer(function DeleteProjectViewModal(p
     if (!workspaceSlug || !projectId) return;
     try {
       setIsDeleteLoading(true);
-      await deleteView(workspaceSlug.toString(), projectId.toString(), data.id);
+      await deleteView(workspaceSlug.toString(), projectId.toString(), data.id, data.revision);
       handleClose();
       router.push(`/${workspaceSlug}/projects/${projectId}/views`);
       setToast({
@@ -49,11 +51,11 @@ export const DeleteProjectViewModal = observer(function DeleteProjectViewModal(p
         title: "Success!",
         message: "View deleted successfully.",
       });
-    } catch (_error) {
+    } catch (error) {
       setToast({
         type: TOAST_TYPE.ERROR,
         title: "Error!",
-        message: "View could not be deleted. Please try again.",
+        message: viewErrorMessage(error),
       });
     }
     setIsDeleteLoading(false);

@@ -27,6 +27,7 @@ from plane.api.rate_limit import ApiKeyRateThrottle
 from plane.utils.exception_logger import log_exception
 from plane.utils.paginator import BasePaginator
 from plane.utils.core.mixins import ReadReplicaControlMixin
+from plane.utils.activity_writer import ActivityWriterMixin
 
 
 logger = logging.getLogger("plane.api")
@@ -40,13 +41,18 @@ class TimezoneMixin:
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
+        # Some generic API lists implement their own filtering and never invoke
+        # the shared filter backend. They must not silently discard View predicates.
+        from plane.utils.view_filters import reject_managed_predicates
+
+        reject_managed_predicates(request.query_params)
         if request.user.is_authenticated:
             timezone.activate(zoneinfo.ZoneInfo(request.user.user_timezone))
         else:
             timezone.deactivate()
 
 
-class BaseAPIView(TimezoneMixin, GenericAPIView, ReadReplicaControlMixin, BasePaginator):
+class BaseAPIView(ActivityWriterMixin, TimezoneMixin, GenericAPIView, ReadReplicaControlMixin, BasePaginator):
     authentication_classes = [APIKeyAuthentication]
 
     permission_classes = [IsAuthenticated]
@@ -151,7 +157,7 @@ class BaseAPIView(TimezoneMixin, GenericAPIView, ReadReplicaControlMixin, BasePa
         return expand if expand else None
 
 
-class BaseViewSet(TimezoneMixin, ReadReplicaControlMixin, ModelViewSet, BasePaginator):
+class BaseViewSet(ActivityWriterMixin, TimezoneMixin, ReadReplicaControlMixin, ModelViewSet, BasePaginator):
     model = None
 
     authentication_classes = [APIKeyAuthentication]

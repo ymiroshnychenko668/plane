@@ -19,6 +19,7 @@ import { useAppRouter } from "@/hooks/use-app-router";
 import useKeypress from "@/hooks/use-keypress";
 // local imports
 import { ProjectViewForm } from "./form";
+import { isScenarioView, viewErrorMessage } from "./scenario";
 
 type Props = {
   data?: IProjectView | null;
@@ -54,27 +55,31 @@ export const CreateUpdateProjectViewModal = observer(function CreateUpdateProjec
         title: "Success!",
         message: "View created successfully.",
       });
-    } catch (_error) {
+    } catch (error) {
       setToast({
         type: TOAST_TYPE.ERROR,
         title: "Error!",
-        message: "Failed to create view. Please try again.",
+        message: viewErrorMessage(error),
       });
+      throw error;
     }
   };
 
   const handleUpdateView = async (payload: IProjectView) => {
     try {
       const viewDetails = await updateView(workspaceSlug, projectId, data?.id as string, payload);
-      mutateFilters(workspaceSlug, viewDetails.id, viewDetails);
-      resetExpression(EIssuesStoreType.PROJECT_VIEW, viewDetails.id, viewDetails.rich_filters);
+      if (!isScenarioView(viewDetails)) {
+        mutateFilters(workspaceSlug, viewDetails.id, viewDetails);
+        resetExpression(EIssuesStoreType.PROJECT_VIEW, viewDetails.id, viewDetails.rich_filters);
+      }
       handleClose();
-    } catch (_error) {
+    } catch (error) {
       setToast({
         type: TOAST_TYPE.ERROR,
         title: "Error!",
-        message: "Failed to update view. Please try again.",
+        message: viewErrorMessage(error),
       });
+      throw error;
     }
   };
 
@@ -90,6 +95,7 @@ export const CreateUpdateProjectViewModal = observer(function CreateUpdateProjec
   return (
     <ModalCore isOpen={isOpen} position={EModalPosition.TOP} width={EModalWidth.XXL}>
       <ProjectViewForm
+        key={`${data?.id ?? "new"}:${isOpen}`}
         data={data}
         handleClose={handleClose}
         handleFormSubmit={handleFormSubmit}

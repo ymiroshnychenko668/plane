@@ -24,6 +24,7 @@ import { useViewPublish } from "@/components/views/publish";
 // local imports
 import { DeleteProjectViewModal } from "./delete-view-modal";
 import { CreateUpdateProjectViewModal } from "./modal";
+import { isScenarioView } from "./scenario";
 
 type Props = {
   parentRef: React.RefObject<HTMLElement>;
@@ -75,7 +76,7 @@ export const ViewQuickActions = observer(function ViewQuickActions(props: Props)
   const MENU_ITEMS: TContextMenuItem[] = Array.isArray(menuResult) ? menuResult : menuResult.items;
   const additionalModals = Array.isArray(menuResult) ? null : menuResult.modals;
 
-  if (publishContextMenu) MENU_ITEMS.splice(2, 0, publishContextMenu);
+  if (publishContextMenu && !isScenarioView(view)) MENU_ITEMS.splice(2, 0, publishContextMenu);
 
   const CONTEXT_MENU_ITEMS = MENU_ITEMS.map(function CONTEXT_MENU_ITEMS(item) {
     return {
@@ -95,7 +96,12 @@ export const ViewQuickActions = observer(function ViewQuickActions(props: Props)
         projectId={projectId}
         data={view}
       />
-      <DeleteProjectViewModal data={view} isOpen={deleteViewModal} onClose={() => setDeleteViewModal(false)} />
+      <DeleteProjectViewModal
+        key={`${view.id}:${deleteViewModal}`}
+        data={view}
+        isOpen={deleteViewModal}
+        onClose={() => setDeleteViewModal(false)}
+      />
       {additionalModals}
       <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />
       <CustomMenu
